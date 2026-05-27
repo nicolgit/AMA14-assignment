@@ -6,9 +6,6 @@
 
 ## 1. Posizionamento
 
-Tra le due versioni precedenti:
-- **v0.1** seguiva la shopping list del brief (Fabric, IoT Hub, D365, Synapse...).
-- **v0.2** era completamente aperta (Kafka, Flink, Camunda, lakehouse aperto).
 - **v0.3** sceglie il **miglior servizio Azure per ciascun problema**, senza essere prigioniera della lista del brief, ma sfruttando il PaaS Azure dove ha senso (meno ops, integrazione nativa con Entra/Monitor/Purview).
 
 ## 2. Principi guida
