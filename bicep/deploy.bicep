@@ -12,7 +12,10 @@ param resourceGroupName string = 'ama-mro-playground'
 param location string = 'francecentral'
 
 @description('Deterministic seed used to build resource names across modules. Use a stable value to make re-deploy idempotent.')
-param resourceNameSeed string = 'ama14mrodev04'
+param resourceNameSeed string = 'ama14mrodev05'
+
+@description('Microsoft Entra object ID of the user running the deployment. This principal will receive Storage Blob Data Contributor on both storage accounts.')
+param deployerObjectId string = '6e94d310-1194-469a-af8e-bd502dcf2782' // get from `az ad signed-in-user show --query id -o tsv`
 
 @description('Common tags applied to all resources.')
 param tags object = {
@@ -34,6 +37,7 @@ module datalake 'deploy-datalake.bicep' = {
   name: 'deploy-datalake'
   scope: rg
   params: {
+    deployerObjectId: deployerObjectId
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
@@ -45,6 +49,7 @@ module mlplatform 'deploy-ml-platform.bicep' = {
   name: 'deploy-ml-platform'
   scope: rg
   params: {
+    deployerObjectId: deployerObjectId
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags

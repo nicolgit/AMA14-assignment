@@ -4,6 +4,9 @@ param location string = resourceGroup().location
 @description('Deterministic seed for resource names. Pass from main deployment to keep names stable across reruns.')
 param resourceNameSeed string
 
+@description('Microsoft Entra object ID of the deployment user to grant Storage Blob Data Contributor on AML workspace storage account.')
+param deployerObjectId string
+
 @description('Common tags applied to all resources.')
 param tags object = {}
 
@@ -32,6 +35,7 @@ var logAnalyticsName = take('law-${resourceNameSeed}', 63)
 var mlWorkspaceName = take('mlw-${resourceNameSeed}', 33)
 var mlEndpointName = toLower(take('rul-${resourceNameSeed}', 32))
 var mlWorkspaceStorageName = toLower(take('stml${nameSeedSafe}', 24))
+var storageBlobDataContributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 
 resource mlWorkspaceStorage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   name: mlWorkspaceStorageName
@@ -47,6 +51,7 @@ resource mlWorkspaceStorage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
     accessTier: 'Hot'
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
+    allowSharedKeyAccess: false
     supportsHttpsTrafficOnly: true
     publicNetworkAccess: 'Enabled'
     networkAcls: {
@@ -114,7 +119,6 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enabledForDiskEncryption: false
     enableRbacAuthorization: true
     softDeleteRetentionInDays: 90
-    enableSoftDelete: false
     publicNetworkAccess: 'Enabled'
   }
 }
@@ -187,6 +191,25 @@ resource mlWorkspaceDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-0
         enabled: true
       }
     ]
+  }
+}
+
+resource deployerBlobDataContributorOnMlStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(mlWorkspaceStorage.id, deployerObjectId, storageBlobDataContributorRoleDefinitionId)
+  scope: mlWorkspaceStorage
+  properties: {
+    roleDefinitionId: storageBlobDataContributorRoleDefinitionId
+    principalId: deployerObjectId
+  }
+}
+
+resource mlWorkspaceIdentityBlobDataContributorOnMlStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(mlWorkspaceStorage.id, mlWorkspace.name, storageBlobDataContributorRoleDefinitionId)
+  scope: mlWorkspaceStorage
+  properties: {
+    roleDefinitionId: storageBlobDataContributorRoleDefinitionId
+    principalId: mlWorkspace.identity.principalId
+    principalType: 'ServicePrincipal'
   }
 }
 

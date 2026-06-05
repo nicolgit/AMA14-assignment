@@ -93,8 +93,8 @@ Crea due data asset versionati (train/test):
 Registra gli asset:
 
 ```powershell
-az ml data create -f .\..\azureml\data\train_fd004.yml -g $RG -w $WS
-az ml data create -f .\..\azureml\data\test_fd004.yml -g $RG -w $WS
+az ml data create -f ../azureml/train_fd004.yml -g $RG -w $WS
+az ml data create -f ../azureml/test_fd004.yml -g $RG -w $WS
 ```
 
 ## 5) Crea environment per training
