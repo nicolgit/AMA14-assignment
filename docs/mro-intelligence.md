@@ -42,6 +42,31 @@ quì non c`è telemetria, in particolare ci sono delle cose che vanno sostituite
 si rompe un sedile.
 in questo caso si può usare un algoritmo di tipo Croston per calcolare la scorta di magazzino per questo tipo di componente
 
-# Su hugging face
-dataset FD001/FD002/FD004 già normalizzati, clusterizzati per regime, con modelli CatBoost RUL https://huggingface.co/spaces/Dakoro/CMAPSS_Predictive_Maintenance_Dashboard
-modello di test già pre-addestrato: https://huggingface.co/penikmatrumput/cnn-lstm-cmapss 
+# Raccomandazione RUL per questo scenario
+Modello consigliato: **CNN-LSTM per regressione RUL**. È una scelta solida per telemetria motore perché cattura sia i pattern locali dei sensori sia la dipendenza temporale nel degrado. Come alternativa più semplice da baseline, si può usare CatBoost sui feature aggregati; per il modello operativo, però, CNN-LSTM è più adatto allo scenario descritto.
+
+Dataset consigliato per training e test: **NASA C-MAPSS, preferibilmente FD004**.
+- **Training**: `train_FD004` ufficiale, con una validation split ricavata dagli ultimi cicli di una parte degli engine del training set.
+- **Test**: `test_FD004` ufficiale con i relativi RUL label.
+- **Perché FD004**: contiene più operating conditions e fault modes, quindi è più vicino a un contesto MRO reale rispetto a FD001.
+
+dataset: https://data.nasa.gov/dataset/cmapss-jet-engine-simulated-data 
+
+## Uso pratico su Azure
+Su Azure ML il flusso corretto è questo:
+- carichi `train_FD004` in **Azure Data Lake Storage Gen2** o **Blob Storage** e lo registri come **data asset**;
+- usi `train_FD004` per addestrare il modello e ricavare una **validation split** interna;
+- usi `test_FD004` solo per la **valutazione offline** del modello, mai per l'inferenza online;
+- quando il modello supera le metriche attese, lo registri nel **Azure ML registry** e lo pubblichi su un **online endpoint**;
+- in produzione l'endpoint riceve telemetria nuova, calcola il RUL e restituisce il rischio di guasto; il test set non entra mai nel runtime.
+
+In pratica:
+- `train_FD004` = addestramento
+- validation split = tuning e scelta del modello
+- `test_FD004` = verifica finale prima del deploy
+- online endpoint = inferenza sui dati reali dei motori
+
+Guida operativa completa: [docs/azure-rul-cnn-lstm-step-by-step.md](docs/azure-rul-cnn-lstm-step-by-step.md)
+
+
+Se serve un benchmark più realistico su telemetria aeronautica moderna, il passo successivo è **N-CMAPSS**; ma per un progetto didattico o PoC, **FD004** è il miglior punto di partenza.
