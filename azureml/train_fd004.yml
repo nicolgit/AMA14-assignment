@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+name: train-fd004
+version: 1
+type: https://raw.githubusercontent.com/nicolgit/AMA14-assignment/refs/heads/main/CMAPPS-data/train_FD004.txt
+path: azureml://datastores/workspaceblobstore/paths/raw/cmapss/fd004/train/train_FD004.txt
+description: NASA C-MAPSS FD004 train file

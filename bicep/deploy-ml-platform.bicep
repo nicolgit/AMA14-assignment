@@ -114,8 +114,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enabledForDiskEncryption: false
     enableRbacAuthorization: true
     softDeleteRetentionInDays: 90
-    enableSoftDelete: true
-    enablePurgeProtection: false
+    enableSoftDelete: false
     publicNetworkAccess: 'Enabled'
   }
 }

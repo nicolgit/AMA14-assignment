@@ -12,7 +12,7 @@ param resourceGroupName string = 'ama-mro-playground'
 param location string = 'francecentral'
 
 @description('Deterministic seed used to build resource names across modules. Use a stable value to make re-deploy idempotent.')
-param resourceNameSeed string = 'ama14mrodev02'
+param resourceNameSeed string = 'ama14mrodev04'
 
 @description('Common tags applied to all resources.')
 param tags object = {

@@ -25,7 +25,7 @@ param containers array = [
 
 // Storage account name: lowercase, 3-24 chars, globally unique if seed is globally unique
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
-var storageAccountName = toLower(take('st${nameSeedSafe}001', 24))
+var storageAccountName = toLower(take('lake${nameSeedSafe}', 24))
 
 resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   name: storageAccountName
