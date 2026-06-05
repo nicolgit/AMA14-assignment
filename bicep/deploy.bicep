@@ -11,8 +11,8 @@ param resourceGroupName string = 'ama-mro-playground'
 ])
 param location string = 'francecentral'
 
-@description('Base name for resources (used to derive unique names).')
-param baseName string = 'nicoldmro'
+@description('Deterministic seed used to build resource names across modules. Use a stable value to make re-deploy idempotent.')
+param resourceNameSeed string = 'ama14mrodev01'
 
 @description('Common tags applied to all resources.')
 param tags object = {
@@ -35,7 +35,18 @@ module datalake 'deploy-datalake.bicep' = {
   scope: rg
   params: {
     location: location
-    baseName: baseName
+    resourceNameSeed: resourceNameSeed
+    tags: tags
+  }
+}
+
+// 3. ML + Monitoring platform
+module mlplatform 'deploy-ml-platform.bicep' = {
+  name: 'deploy-ml-platform'
+  scope: rg
+  params: {
+    location: location
+    resourceNameSeed: resourceNameSeed
     tags: tags
   }
 }
@@ -44,3 +55,10 @@ output resourceGroupId string = rg.id
 output dataLakeAccountName string = datalake.outputs.storageAccountName
 output dataLakeAccountId string = datalake.outputs.storageAccountId
 output dataLakePrimaryDfsEndpoint string = datalake.outputs.primaryDfsEndpoint
+output mlWorkspaceName string = mlplatform.outputs.mlWorkspaceName
+output mlComputeClusterName string = mlplatform.outputs.mlComputeClusterName
+output mlOnlineEndpointName string = mlplatform.outputs.mlOnlineEndpointName
+output keyVaultName string = mlplatform.outputs.keyVaultName
+output applicationInsightsName string = mlplatform.outputs.applicationInsightsName
+output logAnalyticsWorkspaceName string = mlplatform.outputs.logAnalyticsWorkspaceName
+output mlWorkspaceStorageAccountName string = mlplatform.outputs.mlWorkspaceStorageAccountName

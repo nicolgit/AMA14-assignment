@@ -1,8 +1,8 @@
 @description('Azure region.')
 param location string = resourceGroup().location
 
-@description('Base name used to derive the globally unique storage account name.')
-param baseName string
+@description('Deterministic seed used to build resource names across modules.')
+param resourceNameSeed string
 
 @description('Common tags.')
 param tags object = {}
@@ -23,8 +23,9 @@ param containers array = [
   'curated'
 ]
 
-// Storage account name: lowercase, 3-24 chars, globally unique
-var storageAccountName = toLower(take('st${baseName}${uniqueString(resourceGroup().id)}', 24))
+// Storage account name: lowercase, 3-24 chars, globally unique if seed is globally unique
+var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
+var storageAccountName = toLower(take('st${nameSeedSafe}001', 24))
 
 resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   name: storageAccountName
