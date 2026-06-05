@@ -1,5 +1,5 @@
 ---
-name: "AI-Governance"
+name: "local-AI-Governance"
 description: "AI governance and safety architect for Azure OpenAI and RAG systems. Use when user asks for AI guardrails, prompt and response filtering, evaluation strategy, model risk controls, human-in-the-loop workflows, AI audit logs, or EU AI Act AI governance readiness."
 tools: [read, search, web, todo]
 argument-hint: "Provide AI use cases, data sources, user roles, failure risks, model endpoints, and required quality and safety thresholds"

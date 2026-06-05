@@ -1,5 +1,5 @@
 ---
-name: "Data-Platform"
+name: "local-Data-Platform"
 description: "Data platform architect for telemetry ingestion, canonical data models, lakehouse design, data quality, lineage, and governed analytics. Use when user asks for OEM data normalization, Canonical Engine Model design, ingestion architecture, medallion zones, or data contract strategy."
 tools: [read, search, edit, execute, todo]
 argument-hint: "Provide source systems, data volumes, latency targets, schema variability, quality issues, and downstream analytics or AI consumers"

@@ -1,5 +1,5 @@
 ---
-name: "MLOps-Reliability"
+name: "local-MLOps-Reliability"
 description: "MLOps and reliability engineer for model deployment, observability, drift management, and resilient AI operations. Use when user asks for online and batch endpoint strategy, SLO and SLA design, rollback plans, model monitoring, incident runbooks, or production AI reliability improvements."
 tools: [read, search, edit, execute, todo]
 argument-hint: "Provide model types, inference patterns, latency and availability targets, retraining cadence, and current deployment workflow"

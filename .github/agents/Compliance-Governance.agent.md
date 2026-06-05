@@ -1,5 +1,5 @@
 ---
-name: "Compliance-Governance"
+name: "local-Compliance-Governance"
 description: "Compliance and governance architect for GDPR, EU AI Act, NIS2, and EASA Part-145 controls. Use when user asks for compliance checklist, DPIA support, audit trail design, data residency, retention policy, regulatory gap analysis, or go-live compliance readiness."
 tools: [read, search, web, todo]
 argument-hint: "Provide system scope, data categories, countries, processing activities, retention constraints, and target go-live date"
