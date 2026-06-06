@@ -118,9 +118,6 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     // Purge protection MUST stay off so the vault can be deleted and recreated freely.
     // Note: setting this to true is irreversible; null/omitted keeps it disabled.
     enablePurgeProtection: null
-    // Soft delete cannot be disabled, but minimum retention allows fast purge + recreate.
-    enableSoftDelete: true
-    softDeleteRetentionInDays: 7
     publicNetworkAccess: 'Enabled'
   }
 }
