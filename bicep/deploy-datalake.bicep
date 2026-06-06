@@ -4,9 +4,6 @@ param location string = resourceGroup().location
 @description('Deterministic seed used to build resource names across modules.')
 param resourceNameSeed string
 
-@description('Microsoft Entra object ID of the deployment user to grant Storage Blob Data Contributor on this Data Lake account.')
-param deployerObjectId string
-
 @description('Common tags.')
 param tags object = {}
 
@@ -29,7 +26,6 @@ param containers array = [
 // Storage account name: lowercase, 3-24 chars, globally unique if seed is globally unique
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
 var storageAccountName = toLower(take('lake${nameSeedSafe}', 24))
-var storageBlobDataContributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 
 resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   name: storageAccountName
@@ -89,15 +85,6 @@ resource lakeContainers 'Microsoft.Storage/storageAccounts/blobServices/containe
     publicAccess: 'None'
   }
 }]
-
-resource deployerBlobDataContributorOnLake 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storage.id, deployerObjectId, storageBlobDataContributorRoleDefinitionId)
-  scope: storage
-  properties: {
-    roleDefinitionId: storageBlobDataContributorRoleDefinitionId
-    principalId: deployerObjectId
-  }
-}
 
 output storageAccountName string = storage.name
 output storageAccountId string = storage.id
