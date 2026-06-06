@@ -1,12 +1,15 @@
 
 git clone https://github.com/nicolgit/AMA14-assignment
-git pull
 cd .\AMA14-assignment\powershell
+git pull
 
 $RG = 'ama-mro-playground'
 
-# Root del repo = cartella padre di questo script (powershell/ -> repo root)
-$repo = Split-Path $PSScriptRoot -Parent
+# Root del repo = cartella padre di powershell/.
+# Usa $PSScriptRoot se lo script è eseguito come file, altrimenti la working dir
+# (utile quando incolli le righe a mano dopo `cd .../AMA14-assignment/powershell`).
+$base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
+$repo = Split-Path $base -Parent
 
 # Scopri storage ML, workspace e container del datastore di default
 $acct      = az storage account list -g $RG --query "[?starts_with(name,'stml')].name | [0]" -o tsv
