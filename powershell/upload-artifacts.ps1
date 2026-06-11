@@ -30,3 +30,12 @@ az ml data create -g $RG -w $mlw -f "$repo/azureml/test_fd004.yml"
 #    Meglio referenziarlo come `code: ../src` nel YAML del job.
 az storage blob upload-batch --account-name $acct --auth-mode login `
   -d "$container/code/src" -s "$repo/src" --pattern "*.py" --overwrite
+
+# 4. Notebook nello storage ML (visibili come file nel workspaceblobstore).
+$notebooksPath = "$repo/notebooks"
+if (Test-Path $notebooksPath) {
+  az storage blob upload-batch --account-name $acct --auth-mode login `
+    -d "$container/code/notebooks" -s $notebooksPath --pattern "*.ipynb" --overwrite
+} else {
+  Write-Host "Cartella notebooks non trovata: $notebooksPath"
+}
