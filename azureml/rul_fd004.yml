@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+name: rul-fd004
+version: 1
+type: uri_file
+path: azureml://datastores/workspaceblobstore/paths/raw/cmapss/fd004/rul/RUL_FD004.txt
+description: NASA C-MAPSS FD004 RUL labels file

@@ -21,10 +21,13 @@ az storage blob upload --account-name $acct --auth-mode login -c $container `
   -f "$repo/CMAPPS-data/train_FD004.txt" -n raw/cmapss/fd004/train/train_FD004.txt --overwrite
 az storage blob upload --account-name $acct --auth-mode login -c $container `
   -f "$repo/CMAPPS-data/test_FD004.txt"  -n raw/cmapss/fd004/test/test_FD004.txt  --overwrite
+az storage blob upload --account-name $acct --auth-mode login -c $container `
+  -f "$repo/CMAPPS-data/RUL_FD004.txt"   -n raw/cmapss/fd004/rul/RUL_FD004.txt    --overwrite
 
 # 2. Registra i data asset
 az ml data create -g $RG -w $mlw -f "$repo/azureml/train_fd004.yml"
 az ml data create -g $RG -w $mlw -f "$repo/azureml/test_fd004.yml"
+az ml data create -g $RG -w $mlw -f "$repo/azureml/rul_fd004.yml"
 
 # 3. Carica nella file share di Authoring tutto il necessario per il training
 #    (Azure Files share "code-<guid>"): notebooks, codice src, definizioni azureml

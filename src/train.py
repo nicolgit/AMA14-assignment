@@ -106,25 +106,31 @@ def train(
     val_ratio: float = 0.2,
     max_rul: int = 130,
     seed: int = 42,
+    use_mlflow: bool = True,
 ) -> float:
-    """Esegue il training CNN-LSTM e salva gli artefatti. Ritorna il best val RMSE."""
+    """Esegue il training CNN-LSTM e salva gli artefatti. Ritorna il best val RMSE.
+
+    use_mlflow: abilita il tracking MLflow (job AML). In esecuzione interattiva
+    (notebook) passare False: gli artefatti restano salvati su disco.
+    """
     set_seed(seed)
 
     output_dir = Path(model_output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    mlflow.start_run()
-    mlflow.log_params(
-        {
-            "window_size": window_size,
-            "batch_size": batch_size,
-            "epochs": epochs,
-            "learning_rate": learning_rate,
-            "val_ratio": val_ratio,
-            "max_rul": max_rul,
-            "seed": seed,
-        }
-    )
+    if use_mlflow:
+        mlflow.start_run()
+        mlflow.log_params(
+            {
+                "window_size": window_size,
+                "batch_size": batch_size,
+                "epochs": epochs,
+                "learning_rate": learning_rate,
+                "val_ratio": val_ratio,
+                "max_rul": max_rul,
+                "seed": seed,
+            }
+        )
 
     raw_df = load_cmapss_file(train_data)
     df = compute_rul(raw_df, max_rul=max_rul)
@@ -181,9 +187,10 @@ def train(
         train_loss = running_loss / max(1, sample_count)
         val_mae, val_rmse = evaluate(model, val_loader, device)
 
-        mlflow.log_metric("train_mse", train_loss, step=epoch)
-        mlflow.log_metric("val_mae", val_mae, step=epoch)
-        mlflow.log_metric("val_rmse", val_rmse, step=epoch)
+        if use_mlflow:
+            mlflow.log_metric("train_mse", train_loss, step=epoch)
+            mlflow.log_metric("val_mae", val_mae, step=epoch)
+            mlflow.log_metric("val_rmse", val_rmse, step=epoch)
 
         print(
             f"Epoch {epoch:03d} | train_mse={train_loss:.5f} "
@@ -220,12 +227,13 @@ def train(
     with metrics_path.open("w", encoding="utf-8") as f:
         json.dump({"best_val_rmse": best_val_rmse}, f, indent=2)
 
-    mlflow.log_artifact(str(model_path))
-    mlflow.log_artifact(str(scaler_path))
-    mlflow.log_artifact(str(metrics_path))
-    mlflow.log_metric("best_val_rmse", best_val_rmse)
+    if use_mlflow:
+        mlflow.log_artifact(str(model_path))
+        mlflow.log_artifact(str(scaler_path))
+        mlflow.log_artifact(str(metrics_path))
+        mlflow.log_metric("best_val_rmse", best_val_rmse)
+        mlflow.end_run()
 
-    mlflow.end_run()
     print(f"Saved artifacts to: {output_dir}")
     return best_val_rmse
 

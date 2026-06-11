@@ -1,6 +1,6 @@
 <mxfile host="Electron">
   <diagram name="Page-1" id="7ztEtzb7M-Nw4jyKo4fd">
-    <mxGraphModel dx="1412" dy="841" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1338" dy="990" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -8,7 +8,7 @@
           <mxGeometry height="60" width="120" x="30" y="70" as="geometry" />
         </mxCell>
         <mxCell id="x1IuEyyHytXu8cxnBPTn-2" parent="1" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/iot/Event_Hubs.svg;" value="event hub" vertex="1">
-          <mxGeometry height="40" width="44.67" x="270" y="110" as="geometry" />
+          <mxGeometry height="40" width="44.67" x="140" y="470" as="geometry" />
         </mxCell>
         <mxCell id="x1IuEyyHytXu8cxnBPTn-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Azure Stream Analytics&lt;br&gt;o&lt;br&gt;Azure Fuction custom" vertex="1">
           <mxGeometry height="60" width="140" x="360" y="80" as="geometry" />
@@ -63,6 +63,18 @@
         </mxCell>
         <mxCell id="x1IuEyyHytXu8cxnBPTn-22" parent="1" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/iot/Event_Hubs.svg;" value="event hub" vertex="1">
           <mxGeometry height="40" width="44.67" x="420" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="0MVMtTVUCzsUtfEYGEKx-1" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.storage_blob;" value="&lt;div&gt;Azure Storage&lt;/div&gt;ADSL Gen 2" vertex="1">
+          <mxGeometry height="45" width="50" x="340" y="467.5" as="geometry" />
+        </mxCell>
+        <mxCell id="0MVMtTVUCzsUtfEYGEKx-2" parent="1" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/ai_machine_learning/Machine_Learning_Studio_Workspaces.svg;" value="" vertex="1">
+          <mxGeometry height="44" width="44" x="628" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="0MVMtTVUCzsUtfEYGEKx-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="retrain&lt;br&gt;pipeline" vertex="1">
+          <mxGeometry height="50" width="120" x="600" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="0MVMtTVUCzsUtfEYGEKx-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="model registry" vertex="1">
+          <mxGeometry height="50" width="120" x="600" y="520" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
