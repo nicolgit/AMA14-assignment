@@ -26,16 +26,39 @@ az storage blob upload --account-name $acct --auth-mode login -c $container `
 az ml data create -g $RG -w $mlw -f "$repo/azureml/train_fd004.yml"
 az ml data create -g $RG -w $mlw -f "$repo/azureml/test_fd004.yml"
 
-# 3. (Opzionale) Codice .py nello storage — solo se ti serve davvero a mano.
-#    Meglio referenziarlo come `code: ../src` nel YAML del job.
-az storage blob upload-batch --account-name $acct --auth-mode login `
-  -d "$container/code/src" -s "$repo/src" --pattern "*.py" --overwrite
-
-# 4. Notebook nello storage ML (visibili come file nel workspaceblobstore).
+# 3. Notebook visibili direttamente in Authoring/Notebooks (Azure Files share "code-<guid>").
+#    Imposta AML_NOTEBOOK_USER per forzare la cartella utente (es. nicold). Altrimenti
+#    viene rilevata automaticamente la prima cartella sotto Users/.
 $notebooksPath = "$repo/notebooks"
 if (Test-Path $notebooksPath) {
-  az storage blob upload-batch --account-name $acct --auth-mode login `
-    -d "$container/code/notebooks" -s $notebooksPath --pattern "*.ipynb" --overwrite
-} else {
-  Write-Host "Cartella notebooks non trovata: $notebooksPath"
+  # La share dei notebook ha nome dinamico: code-<guid>
+  $shareName = az storage share-rm list --resource-group $RG --storage-account $acct `
+    --query "[?starts_with(name,'code-')].name | [0]" -o tsv
+
+  if (-not $shareName) {
+    Write-Host "Share dei notebook (code-*) non trovata nello storage account $acct."
+  } else {
+    # Cartella utente: env var oppure prima cartella sotto Users/
+    $authoringUser = $env:AML_NOTEBOOK_USER
+    if (-not $authoringUser) {
+      $authoringUser = az storage file list --account-name $acct --auth-mode login `
+        --enable-file-backup-request-intent --share-name $shareName --path "Users" `
+        --query "[0].name" -o tsv
+    }
+
+    if (-not $authoringUser) {
+      Write-Host "Nessuna cartella utente trovata sotto Users/. Imposta AML_NOTEBOOK_USER e riesegui."
+    } else {
+      $authoringPath = "Users/$authoringUser"
+      Write-Host "Carico i notebook in: $shareName/$authoringPath"
+
+      Get-ChildItem -Path $notebooksPath -Filter "*.ipynb" -File | ForEach-Object {
+        az storage file upload --account-name $acct --auth-mode login `
+          --enable-file-backup-request-intent --share-name $shareName --source $_.FullName `
+          --path "$authoringPath/$($_.Name)" --output none
+      }
+
+      Write-Host "Notebook caricati in Authoring/Notebooks (utente $authoringUser)."
+    }
+  }
 }
