@@ -61,6 +61,7 @@ module mlplatform 'deploy-ml.bicep' = {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
+    computeInstanceAssignedUserObjectId: deployerObjectId
   }
 }
 
@@ -82,7 +83,7 @@ output dataLakePrimaryDfsEndpoint string = datalake.outputs.primaryDfsEndpoint
 output currentUserBlobDataContributorRoleAssignmentId string = currentUser.outputs.storageBlobDataContributorRoleAssignmentId
 output mlWorkspaceStorageBlobDataContributorRoleAssignmentId string = currentUserMlStorage.outputs.storageBlobDataContributorRoleAssignmentId
 output mlWorkspaceName string = mlplatform.outputs.mlWorkspaceName
-output mlComputeClusterName string = mlplatform.outputs.mlComputeClusterName
+output mlComputeInstanceName string = mlplatform.outputs.mlComputeInstanceName
 output mlOnlineEndpointName string = mlplatform.outputs.mlOnlineEndpointName
 output keyVaultName string = mlplatform.outputs.keyVaultName
 output applicationInsightsName string = mlplatform.outputs.applicationInsightsName

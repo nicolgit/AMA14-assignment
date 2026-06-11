@@ -40,33 +40,44 @@ $shareName = az storage share-rm list --resource-group $RG --storage-account $ac
 if (-not $shareName) {
   Write-Host "Share dei notebook (code-*) non trovata nello storage account $acct."
 } else {
-  # Cartella utente: env var oppure prima cartella sotto Users/
+  # Cartella utente: env var oppure prima cartella sotto Users/.
+  # Se Users/ non esiste ancora (compute mai avviata) o e' vuota, si usa il
+  # fallback AML_NOTEBOOK_USER (default 'nicold'): upload-batch crea il percorso.
   $authoringUser = $env:AML_NOTEBOOK_USER
   if (-not $authoringUser) {
+    # 2>$null evita che ResourceNotFound interrompa lo script.
     $authoringUser = az storage file list --account-name $acct --auth-mode login `
       --enable-file-backup-request-intent --share-name $shareName --path "Users" `
-      --query "[0].name" -o tsv
+      --query "[0].name" -o tsv 2>$null
   }
 
   if (-not $authoringUser) {
-    Write-Host "Nessuna cartella utente trovata sotto Users/. Imposta AML_NOTEBOOK_USER e riesegui."
-  } else {
-    $projectRoot = "Users/$authoringUser/AMA14-assignment"
-    # Cartelle del repo necessarie al training, caricate ricorsivamente.
-    $folders = @('notebooks', 'src', 'azureml', 'CMAPPS-data')
-
-    foreach ($folder in $folders) {
-      $localPath = Join-Path $repo $folder
-      if (-not (Test-Path $localPath)) {
-        Write-Host "Salto $folder (non trovato in $repo)."
-        continue
-      }
-      Write-Host "Carico $folder -> $shareName/$projectRoot/$folder"
-      az storage file upload-batch --account-name $acct --auth-mode login `
-        --enable-file-backup-request-intent --destination $shareName `
-        --destination-path "$projectRoot/$folder" --source $localPath --output none
-    }
-
-    Write-Host "Artefatti di training caricati in Authoring (utente $authoringUser)."
+    $authoringUser = 'nicold'
+    Write-Host "Cartella Users/ assente o vuota: uso fallback utente '$authoringUser' (override con AML_NOTEBOOK_USER)."
   }
+
+  $projectRoot = "Users/$authoringUser/AMA14-assignment"
+  # Cartelle del repo necessarie al training, caricate ricorsivamente.
+  $folders = @('notebooks', 'src', 'azureml', 'CMAPPS-data')
+
+  foreach ($folder in $folders) {
+    $localPath = Join-Path $repo $folder
+    if (-not (Test-Path $localPath)) {
+      Write-Host "Salto $folder (non trovato in $repo)."
+      continue
+    }
+    Write-Host "Carico $folder -> $shareName/$projectRoot/$folder"
+    az storage file upload-batch --account-name $acct --auth-mode login `
+      --enable-file-backup-request-intent --destination $shareName `
+      --destination-path "$projectRoot/$folder" --source $localPath --output none
+  }
+
+  Write-Host "Artefatti di training caricati in Authoring (utente $authoringUser)."
 }
+
+# 4. Registra l'environment di training (idempotente: se la versione esiste gia,
+#    AML la riusa). Il job NON viene sottomesso: il suo YAML e' gia disponibile
+#    nella file share (step 3) e si lancia a mano dallo Studio o con:
+#      az ml job create -g $RG -w $mlw -f azureml/jobs/train_rul_fd004.yml
+az ml environment create -g $RG -w $mlw -f "$repo/azureml/environment/rul-cnnlstm-env.yml"
+Write-Host "Environment registrato. Job NON eseguito (YAML disponibile in azureml/jobs/train_rul_fd004.yml)."

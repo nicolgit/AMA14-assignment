@@ -15,7 +15,7 @@ Il flusso corretto è:
 Serve questo set minimo di risorse:
 - **Azure ML Workspace**
 - **Storage account / ADLS Gen2** per i dataset
-- **Azure ML Compute Cluster** per training
+- **Azure ML Compute Instance** per training
 - **Azure ML Online Endpoint** per serving
 - **Key Vault** per segreti e connessioni
 - **Application Insights / Log Analytics** per monitoring
@@ -95,7 +95,7 @@ Il job deve:
 
 ### 7.2 Dove eseguirlo
 
-Esegui il training su un **Azure ML Compute Cluster** con GPU se il modello è pesante, oppure CPU se il dataset e la rete restano piccoli.
+Esegui il training su una **Azure ML Compute Instance** (single-user) con CPU, adeguata dato che il dataset e la rete restano piccoli.
 
 ### 7.3 Output atteso
 
@@ -118,7 +118,7 @@ command: >
   --train_data ${{inputs.train_data}}
   --model_output ${{outputs.model_output}}
 environment: azureml:rul-cnnlstm-env@latest
-compute: azureml:cpu-cluster
+compute: azureml:ci-ama14mrodev09
 inputs:
   train_data:
     type: uri_folder

@@ -4,7 +4,7 @@ Questa guida assume che l'infrastruttura sia gia deployata con i template Bicep 
 - Resource Group
 - Data Lake (ADLS Gen2)
 - Azure ML Workspace
-- Compute cluster AML (`cpu-cluster`)
+- Compute Instance AML (`ci-<seed>`, single-user)
 
 Obiettivo: addestrare un modello CNN-LSTM per RUL usando C-MAPSS FD004 (`train_FD004` / `test_FD004`).
 
@@ -172,7 +172,7 @@ outputs:
   model_output:
     type: uri_folder
 environment: azureml:rul-cnnlstm-env:1
-compute: azureml:cpu-cluster
+compute: azureml:ci-ama14mrodev09
 ```
 
 Lancia il training:
@@ -230,7 +230,7 @@ az ml model create `
   assegna `Storage Blob Data Contributor` e aspetta propagation RBAC.
 
 - Job AML non parte su compute:
-  verifica stato `cpu-cluster` e quota region.
+  verifica che la Compute Instance `ci-<seed>` sia avviata (Running) e quota region.
 
 - Differenze train vs test molto alte:
   controlla leakage, split per engine-id, e coerenza preprocessing.

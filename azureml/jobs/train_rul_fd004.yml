@@ -30,4 +30,5 @@ outputs:
   model_output:
     type: uri_folder
 environment: azureml:rul-cnnlstm-env:1
-compute: azureml:cpu-cluster
+# Compute instance (single-user). Il nome e' ci-<resourceNameSeed> definito nel bicep.
+compute: azureml:ci-ama14mrodev09
