@@ -1,0 +1,33 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+display_name: train-rul-cnnlstm-fd004
+experiment_name: rul-fd004
+# Il codice viene preso direttamente dal repo: AML ne crea uno snapshot versionato al submit.
+code: ../../src
+command: >-
+  python train.py
+  --train_data ${{inputs.train_data}}
+  --model_output ${{outputs.model_output}}
+  --window_size ${{inputs.window_size}}
+  --batch_size ${{inputs.batch_size}}
+  --epochs ${{inputs.epochs}}
+  --learning_rate ${{inputs.learning_rate}}
+  --val_ratio ${{inputs.val_ratio}}
+  --max_rul ${{inputs.max_rul}}
+  --seed ${{inputs.seed}}
+inputs:
+  # Usa il data asset gia registrato (train-fd004, versione 1).
+  train_data:
+    type: uri_file
+    path: azureml:train-fd004:1
+  window_size: 30
+  batch_size: 128
+  epochs: 20
+  learning_rate: 0.001
+  val_ratio: 0.2
+  max_rul: 130
+  seed: 42
+outputs:
+  model_output:
+    type: uri_folder
+environment: azureml:rul-cnnlstm-env:1
+compute: azureml:cpu-cluster

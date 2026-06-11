@@ -1,0 +1,12 @@
+name: rul-cnnlstm
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - torch
+      - numpy
+      - pandas
+      - scikit-learn
+      - mlflow

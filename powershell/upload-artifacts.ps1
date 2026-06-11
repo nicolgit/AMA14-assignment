@@ -26,39 +26,47 @@ az storage blob upload --account-name $acct --auth-mode login -c $container `
 az ml data create -g $RG -w $mlw -f "$repo/azureml/train_fd004.yml"
 az ml data create -g $RG -w $mlw -f "$repo/azureml/test_fd004.yml"
 
-# 3. Notebook visibili direttamente in Authoring/Notebooks (Azure Files share "code-<guid>").
+# 3. Carica nella file share di Authoring tutto il necessario per il training
+#    (Azure Files share "code-<guid>"): notebooks, codice src, definizioni azureml
+#    (jobs + environment) e i dati C-MAPSS. La struttura del repo viene replicata
+#    sotto Users/<user>/AMA14-assignment/ cosi il notebook trova i percorsi attesi.
 #    Imposta AML_NOTEBOOK_USER per forzare la cartella utente (es. nicold). Altrimenti
 #    viene rilevata automaticamente la prima cartella sotto Users/.
-$notebooksPath = "$repo/notebooks"
-if (Test-Path $notebooksPath) {
-  # La share dei notebook ha nome dinamico: code-<guid>
-  $shareName = az storage share-rm list --resource-group $RG --storage-account $acct `
-    --query "[?starts_with(name,'code-')].name | [0]" -o tsv
 
-  if (-not $shareName) {
-    Write-Host "Share dei notebook (code-*) non trovata nello storage account $acct."
+# La share dei notebook ha nome dinamico: code-<guid>
+$shareName = az storage share-rm list --resource-group $RG --storage-account $acct `
+  --query "[?starts_with(name,'code-')].name | [0]" -o tsv
+
+if (-not $shareName) {
+  Write-Host "Share dei notebook (code-*) non trovata nello storage account $acct."
+} else {
+  # Cartella utente: env var oppure prima cartella sotto Users/
+  $authoringUser = $env:AML_NOTEBOOK_USER
+  if (-not $authoringUser) {
+    $authoringUser = az storage file list --account-name $acct --auth-mode login `
+      --enable-file-backup-request-intent --share-name $shareName --path "Users" `
+      --query "[0].name" -o tsv
+  }
+
+  if (-not $authoringUser) {
+    Write-Host "Nessuna cartella utente trovata sotto Users/. Imposta AML_NOTEBOOK_USER e riesegui."
   } else {
-    # Cartella utente: env var oppure prima cartella sotto Users/
-    $authoringUser = $env:AML_NOTEBOOK_USER
-    if (-not $authoringUser) {
-      $authoringUser = az storage file list --account-name $acct --auth-mode login `
-        --enable-file-backup-request-intent --share-name $shareName --path "Users" `
-        --query "[0].name" -o tsv
-    }
+    $projectRoot = "Users/$authoringUser/AMA14-assignment"
+    # Cartelle del repo necessarie al training, caricate ricorsivamente.
+    $folders = @('notebooks', 'src', 'azureml', 'CMAPPS-data')
 
-    if (-not $authoringUser) {
-      Write-Host "Nessuna cartella utente trovata sotto Users/. Imposta AML_NOTEBOOK_USER e riesegui."
-    } else {
-      $authoringPath = "Users/$authoringUser"
-      Write-Host "Carico i notebook in: $shareName/$authoringPath"
-
-      Get-ChildItem -Path $notebooksPath -Filter "*.ipynb" -File | ForEach-Object {
-        az storage file upload --account-name $acct --auth-mode login `
-          --enable-file-backup-request-intent --share-name $shareName --source $_.FullName `
-          --path "$authoringPath/$($_.Name)" --output none
+    foreach ($folder in $folders) {
+      $localPath = Join-Path $repo $folder
+      if (-not (Test-Path $localPath)) {
+        Write-Host "Salto $folder (non trovato in $repo)."
+        continue
       }
-
-      Write-Host "Notebook caricati in Authoring/Notebooks (utente $authoringUser)."
+      Write-Host "Carico $folder -> $shareName/$projectRoot/$folder"
+      az storage file upload-batch --account-name $acct --auth-mode login `
+        --enable-file-backup-request-intent --destination $shareName `
+        --destination-path "$projectRoot/$folder" --source $localPath --output none
     }
+
+    Write-Host "Artefatti di training caricati in Authoring (utente $authoringUser)."
   }
 }

@@ -96,38 +96,48 @@ def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> tupl
     return mae, rmse
 
 
-def main() -> None:
-    args = parse_args()
-    set_seed(args.seed)
+def train(
+    train_data: str,
+    model_output: str,
+    window_size: int = 30,
+    batch_size: int = 128,
+    epochs: int = 20,
+    learning_rate: float = 1e-3,
+    val_ratio: float = 0.2,
+    max_rul: int = 130,
+    seed: int = 42,
+) -> float:
+    """Esegue il training CNN-LSTM e salva gli artefatti. Ritorna il best val RMSE."""
+    set_seed(seed)
 
-    output_dir = Path(args.model_output)
+    output_dir = Path(model_output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     mlflow.start_run()
     mlflow.log_params(
         {
-            "window_size": args.window_size,
-            "batch_size": args.batch_size,
-            "epochs": args.epochs,
-            "learning_rate": args.learning_rate,
-            "val_ratio": args.val_ratio,
-            "max_rul": args.max_rul,
-            "seed": args.seed,
+            "window_size": window_size,
+            "batch_size": batch_size,
+            "epochs": epochs,
+            "learning_rate": learning_rate,
+            "val_ratio": val_ratio,
+            "max_rul": max_rul,
+            "seed": seed,
         }
     )
 
-    raw_df = load_cmapss_file(args.train_data)
-    df = compute_rul(raw_df, max_rul=args.max_rul)
+    raw_df = load_cmapss_file(train_data)
+    df = compute_rul(raw_df, max_rul=max_rul)
     feature_columns = get_feature_columns()
 
-    train_ids, val_ids = split_engine_ids(df["engine_id"].tolist(), args.val_ratio, args.seed)
+    train_ids, val_ids = split_engine_ids(df["engine_id"].tolist(), val_ratio, seed)
     train_df = df[df["engine_id"].isin(train_ids)].copy()
     val_df = df[df["engine_id"].isin(val_ids)].copy()
 
     scaler = fit_scaler(train_df, feature_columns)
 
-    train_seq = build_sequences(train_df, feature_columns, scaler, args.window_size)
-    val_seq = build_sequences(val_df, feature_columns, scaler, args.window_size)
+    train_seq = build_sequences(train_df, feature_columns, scaler, window_size)
+    val_seq = build_sequences(val_df, feature_columns, scaler, window_size)
 
     train_ds = TensorDataset(
         torch.from_numpy(train_seq.features),
@@ -138,18 +148,18 @@ def main() -> None:
         torch.from_numpy(val_seq.targets),
     )
 
-    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = CNNLSTMRegressor(input_dim=len(feature_columns)).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     loss_fn = nn.MSELoss()
 
     best_val_rmse = float("inf")
     best_state = None
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(1, epochs + 1):
         model.train()
         running_loss = 0.0
         sample_count = 0
@@ -164,9 +174,9 @@ def main() -> None:
             loss.backward()
             optimizer.step()
 
-            batch_size = xb.size(0)
-            running_loss += loss.item() * batch_size
-            sample_count += batch_size
+            batch = xb.size(0)
+            running_loss += loss.item() * batch
+            sample_count += batch
 
         train_loss = running_loss / max(1, sample_count)
         val_mae, val_rmse = evaluate(model, val_loader, device)
@@ -184,12 +194,12 @@ def main() -> None:
             best_val_rmse = val_rmse
             best_state = {
                 "state_dict": model.state_dict(),
-                "window_size": args.window_size,
+                "window_size": window_size,
                 "input_dim": len(feature_columns),
                 "conv_channels": 64,
                 "lstm_hidden": 64,
                 "feature_columns": feature_columns,
-                "max_rul": args.max_rul,
+                "max_rul": max_rul,
             }
 
     if best_state is None:
@@ -217,6 +227,22 @@ def main() -> None:
 
     mlflow.end_run()
     print(f"Saved artifacts to: {output_dir}")
+    return best_val_rmse
+
+
+def main() -> None:
+    args = parse_args()
+    train(
+        train_data=args.train_data,
+        model_output=args.model_output,
+        window_size=args.window_size,
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        learning_rate=args.learning_rate,
+        val_ratio=args.val_ratio,
+        max_rul=args.max_rul,
+        seed=args.seed,
+    )
 
 
 if __name__ == "__main__":
