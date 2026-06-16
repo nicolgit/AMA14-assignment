@@ -61,7 +61,6 @@ module mlplatform 'deploy-ml.bicep' = {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
-    computeInstanceAssignedUserObjectId: deployerObjectId
   }
 }
 
@@ -76,6 +75,22 @@ module currentUserMlStorage 'current-user.bicep' = {
   }
 }
 
+// 6. Compute Instance (created last, after the file-privileged RBAC is in place
+//    so the instance can mount the workspace storage without StorageMountError).
+module compute 'deploy-compute.bicep' = {
+  name: 'deploy-compute'
+  scope: rg
+  dependsOn: [
+    currentUserMlStorage
+  ]
+  params: {
+    location: location
+    resourceNameSeed: resourceNameSeed
+    mlWorkspaceName: mlplatform.outputs.mlWorkspaceName
+    computeInstanceAssignedUserObjectId: deployerObjectId
+  }
+}
+
 output resourceGroupId string = rg.id
 output dataLakeAccountName string = datalake.outputs.storageAccountName
 output dataLakeAccountId string = datalake.outputs.storageAccountId
@@ -83,7 +98,7 @@ output dataLakePrimaryDfsEndpoint string = datalake.outputs.primaryDfsEndpoint
 output currentUserBlobDataContributorRoleAssignmentId string = currentUser.outputs.storageBlobDataContributorRoleAssignmentId
 output mlWorkspaceStorageBlobDataContributorRoleAssignmentId string = currentUserMlStorage.outputs.storageBlobDataContributorRoleAssignmentId
 output mlWorkspaceName string = mlplatform.outputs.mlWorkspaceName
-output mlComputeInstanceName string = mlplatform.outputs.mlComputeInstanceName
+output mlComputeInstanceName string = compute.outputs.mlComputeInstanceName
 output mlOnlineEndpointName string = mlplatform.outputs.mlOnlineEndpointName
 output keyVaultName string = mlplatform.outputs.keyVaultName
 output applicationInsightsName string = mlplatform.outputs.applicationInsightsName

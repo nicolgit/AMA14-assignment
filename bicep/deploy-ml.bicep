@@ -14,12 +14,6 @@ param tags object = {}
 ])
 param mlWorkspaceStorageSku string = 'Standard_LRS'
 
-@description('Azure ML compute instance VM size.')
-param trainingVmSize string = 'Standard_DS3_v2'
-
-@description('Entra object ID of the user the compute instance is assigned to (single-user interactive resource).')
-param computeInstanceAssignedUserObjectId string
-
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
 var keyVaultName = toLower(take('kv-${resourceNameSeed}', 24))
 var appInsightsName = take('appi-${resourceNameSeed}', 60)
@@ -27,7 +21,6 @@ var logAnalyticsName = take('law-${resourceNameSeed}', 63)
 var mlWorkspaceName = take('mlw-${resourceNameSeed}', 33)
 var mlEndpointName = toLower(take('rul-${resourceNameSeed}', 32))
 var mlWorkspaceStorageName = toLower(take('stml${nameSeedSafe}', 24))
-var computeInstanceName = take('ci-${resourceNameSeed}', 24)
 
 resource mlWorkspaceStorage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   name: mlWorkspaceStorageName
@@ -137,26 +130,6 @@ resource mlWorkspace 'Microsoft.MachineLearningServices/workspaces@2024-10-01-pr
   }
 }
 
-resource computeInstance 'Microsoft.MachineLearningServices/workspaces/computes@2024-04-01' = {
-  name: computeInstanceName
-  parent: mlWorkspace
-  location: location
-  properties: {
-    computeType: 'ComputeInstance'
-    properties: {
-      vmSize: trainingVmSize
-      // Single-user interactive resource: assigned to the deployer.
-      applicationSharingPolicy: 'Personal'
-      personalComputeInstanceSettings: {
-        assignedUser: {
-          objectId: computeInstanceAssignedUserObjectId
-          tenantId: subscription().tenantId
-        }
-      }
-    }
-  }
-}
-
 resource onlineEndpoint 'Microsoft.MachineLearningServices/workspaces/onlineEndpoints@2024-04-01' = {
   name: mlEndpointName
   parent: mlWorkspace
@@ -196,5 +169,4 @@ output applicationInsightsName string = applicationInsights.name
 output keyVaultName string = keyVault.name
 output mlWorkspaceName string = mlWorkspace.name
 output mlWorkspaceStorageAccountName string = mlWorkspaceStorage.name
-output mlComputeInstanceName string = computeInstance.name
 output mlOnlineEndpointName string = onlineEndpoint.name
