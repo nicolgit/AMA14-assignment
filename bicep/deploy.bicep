@@ -8,8 +8,9 @@ param resourceGroupName string = 'ama-mro-playground'
   'francecentral'
   'westeurope'
   'northeurope'
+  'italynorth'
 ])
-param location string = 'francecentral'
+param location string = 'italynorth'
 
 @description('Deterministic seed used to build resource names across modules. Use a stable value to make re-deploy idempotent.')
 param resourceNameSeed string = 'ama14mrodev09'

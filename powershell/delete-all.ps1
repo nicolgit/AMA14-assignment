@@ -35,3 +35,4 @@ foreach ($vault in $deletedVaults) {
         echo "Purging vault '$name' in location '$location'..."
     }
 }
+

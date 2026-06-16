@@ -7,8 +7,8 @@ param resourceNameSeed string
 @description('Name of the existing Azure ML workspace that will host the compute instance.')
 param mlWorkspaceName string
 
-@description('Azure ML compute instance VM size.')
-param trainingVmSize string = 'Standard_DS3_v2'
+@description('Azure ML compute instance VM size. 2-core sizes are enough for a small CMAPSS prototype; D2s_v5 (DS-series v5) gives 2 vCPU / 8 GB RAM.')
+param trainingVmSize string = 'STANDARD_D4S_V3'
 
 @description('Entra object ID of the user the compute instance is assigned to (single-user interactive resource).')
 param computeInstanceAssignedUserObjectId string
