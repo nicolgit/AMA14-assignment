@@ -42,4 +42,41 @@ The data are provided as a zip-compressed text file with 26 columns of numbers, 
 26.	sensor measurement  26
 
 
-Reference: A. Saxena, K. Goebel, D. Simon, and N. Eklund, �Damage Propagation Modeling for Aircraft Engine Run-to-Failure Simulation�, in the Proceedings of the Ist International Conference on Prognostics and Health Management (PHM08), Denver CO, Oct 2008.
+> Reference: A. Saxena, K. Goebel, D. Simon, and N. Eklund, �Damage Propagation Modeling for Aircraft Engine Run-to-Failure Simulation�, in the Proceedings of the Ist International Conference on Prognostics and Health Management (PHM08), Denver CO, Oct 2008.
+
+
+
+## Struttura delle colonne di FD004
+
+Le colonne di FD004 seguono il formato standard C-MAPSS: **26 colonne separate da spazi**, dove ogni riga è uno _snapshot_ di un singolo ciclo operativo di un motore.
+
+### Colonne in `test_FD004.txt` / `train_FD004.txt`
+
+| Colonna | Nome | Significato |
+| --- | --- | --- |
+| 1 | `unit number` | ID del motore (1, 2, 3, ...). Identifica a quale motore della flotta appartiene la riga. In FD004: 248 motori nel train, 249 nel test. |
+| 2 | `time, in cycles` | Numero del ciclo operativo per quel motore. Riparte da 1 per ogni nuovo motore e cresce di 1 a ogni riga (è il "tempo" della serie temporale). |
+| 3 | `operational setting 1` | Condizione operativa 1 (es. quota / altitude). |
+| 4 | `operational setting 2` | Condizione operativa 2 (es. numero di Mach). |
+| 5 | `operational setting 3` | Condizione operativa 3 (es. manetta / throttle resolver angle TRA). |
+| 6–26 | `sensor measurement 1...21` | 21 misure dei sensori (temperature, pressioni, velocità di rotazione, rapporti di flusso, ecc.). |
+
+> **Nota:** il readme dice "sensor measurement 1...26", ma di fatto le colonne sono 26 totali, quindi i sensori sono **21** (colonne 6→26). È un refuso classico della documentazione originale NASA.
+
+Layout di una riga:
+
+```text
+[unit] [cycle] [op_set1] [op_set2] [op_set3] [s1] [s2] ... [s21]
+  1      1      -0.0007    0.0004    100.0    518.67 ...
+  ^      ^      └──── condizione operativa ───┘ └─ 21 sensori ─┘
+  │      └─ tempo (ciclo)
+  └─ ID motore
+```
+
+### Punti chiave specifici di FD004
+
+- **ID motore** → colonna `1`.
+- **Condizione operativa** → colonne `3`, `4`, `5` (le tre `operational setting`). In FD004 ci sono **6 regimi operativi distinti** (`CONDITIONS: SIX`): combinando i valori di queste 3 colonne i punti si raggruppano in 6 cluster. Per questo in fase di preprocessing è quasi obbligatorio **normalizzare i sensori per regime operativo** (clustering sulle colonne 3-5), altrimenti il segnale di degrado è mascherato dalle variazioni di condizione.
+- **Modalità di guasto** → **NON è una colonna esplicita**. È una proprietà del dataset, non un campo nei dati:
+  - FD004 ha **2 fault mode**: degrado HPC (High Pressure Compressor) + degrado della ventola (Fan).
+  - Quale dei due (o entrambi) affligga un dato motore è **latente/sconosciuto**: deve emergere dal pattern dei sensori, non è etichettato.
