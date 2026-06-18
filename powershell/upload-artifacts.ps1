@@ -24,7 +24,6 @@ az storage blob upload --account-name $acct --auth-mode login -c $container `
   -f "$repo/CMAPPS-data/test_FD004.txt"  -n raw/cmapss/fd004/test/test_FD004.txt  --overwrite
 az storage blob upload --account-name $acct --auth-mode login -c $container `
   -f "$repo/CMAPPS-data/RUL_FD004.txt"   -n raw/cmapss/fd004/rul/RUL_FD004.txt    --overwrite
-*/
 
 # 2. Registra i data asset
 az ml data create -g $RG -w $mlw -f "$repo/azureml/train_fd004.yml"
@@ -32,7 +31,14 @@ az ml data create -g $RG -w $mlw -f "$repo/azureml/test_fd004.yml"
 az ml data create -g $RG -w $mlw -f "$repo/azureml/rul_fd004.yml"
 
 # Environment (CNN-LSTM)
-az ml environment create -f .\azureml\environment\rul-cnnlstm-env.yml -g $RG -w $WS
+az ml environment create -f "$repo/azureml/environment/rul-cnnlstm-env.yml" -g $RG -w $mlw
+
+# 4. Lancia il training (serverless: nessun compute da pre-creare)
+az ml job create -f "$repo/azureml/jobs/train_rul_fd004.yml" -g $RG -w $mlw
+
+
+
+
 
 # 3. Carica nella file share di Authoring tutto il necessario per il training
 #    (Azure Files share "code-<guid>"): notebooks, codice src, definizioni azureml

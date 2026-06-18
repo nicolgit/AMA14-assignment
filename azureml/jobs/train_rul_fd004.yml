@@ -1,6 +1,11 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 display_name: train-rul-cnnlstm-fd004
 experiment_name: rul-fd004
+# Serverless compute non ha managed identity e il datastore di default usa
+# auth identity-based: si usa l'identita' di chi sottomette il job (deployer
+# con Storage Blob Data Contributor) per leggere/scrivere i dati.
+identity:
+  type: user_identity
 # Il codice viene preso direttamente dal repo: AML ne crea uno snapshot versionato al submit.
 code: ../../src
 command: >-
