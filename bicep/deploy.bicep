@@ -8,15 +8,17 @@ param resourceGroupName string = 'ama-mro-playground'
   'francecentral'
   'westeurope'
   'northeurope'
-  'italynorth'
 ])
-param location string = 'italynorth'
+param location string = 'francecentral'
 
 @description('Deterministic seed used to build resource names across modules. Includes MMdd from deploy time; pin an explicit value to keep re-deploy idempotent across days.')
-param resourceNameSeed string = 'amamrodev${utcNow('MMdd')}'
+param resourceNameSeed string = 'amamrodeve${utcNow('MMdd')}'
 
 @description('Microsoft Entra object ID of the user running the deployment. This principal will receive Storage Blob Data Contributor on the Data Lake account.')
 param deployerObjectId string = '6e94d310-1194-469a-af8e-bd502dcf2782' // get from `az ad signed-in-user show --query id -o tsv`
+
+@description('Deploy the single-user compute instance for interactive work.')
+param deployCompute bool = false
 
 @description('Common tags applied to all resources.')
 param tags object = {
@@ -78,7 +80,7 @@ module currentUserMlStorage 'current-user.bicep' = {
 
 // 6. Compute Instance (created last, after the file-privileged RBAC is in place
 //    so the instance can mount the workspace storage without StorageMountError).
-module compute 'deploy-compute.bicep' = {
+module compute 'deploy-compute.bicep' = if (deployCompute) {
   name: 'deploy-compute'
   scope: rg
   dependsOn: [
@@ -99,7 +101,7 @@ output dataLakePrimaryDfsEndpoint string = datalake.outputs.primaryDfsEndpoint
 output currentUserBlobDataContributorRoleAssignmentId string = currentUser.outputs.storageBlobDataContributorRoleAssignmentId
 output mlWorkspaceStorageBlobDataContributorRoleAssignmentId string = currentUserMlStorage.outputs.storageBlobDataContributorRoleAssignmentId
 output mlWorkspaceName string = mlplatform.outputs.mlWorkspaceName
-output mlComputeInstanceName string = compute.outputs.mlComputeInstanceName
+output mlComputeInstanceName string = deployCompute ? compute.?outputs.mlComputeInstanceName ?? '' : ''
 output mlOnlineEndpointName string = mlplatform.outputs.mlOnlineEndpointName
 output keyVaultName string = mlplatform.outputs.keyVaultName
 output applicationInsightsName string = mlplatform.outputs.applicationInsightsName

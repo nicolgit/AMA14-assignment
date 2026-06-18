@@ -30,5 +30,10 @@ outputs:
   model_output:
     type: uri_folder
 environment: azureml:rul-cnnlstm-env:1
-# Compute instance (single-user). Il nome e' ci-<resourceNameSeed> definito nel bicep.
-compute: azureml:ci-ama14mrodev09
+# Serverless compute: nessun cluster da pre-creare. AML provisiona la VM al submit
+# e la rilascia a fine job. Si omette `compute` e si dichiara la VM in `resources`.
+resources:
+  instance_type: Standard_D4s_v3
+  instance_count: 1
+# Alternativa: cluster pre-creato dal bicep (cl-<resourceNameSeed>).
+# compute: azureml:cl-ama14mrodev09
