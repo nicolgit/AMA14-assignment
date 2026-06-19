@@ -44,4 +44,5 @@ Write-Host "Environment registrato. Job NON eseguito (YAML disponibile in azurem
 #    (model.pt + scaler.pkl) all'evaluate. Per il solo training usare invece
 #    azureml/jobs/train_rul_fd004.yml.
 az ml job create -f "$repo/azureml/jobs/pipeline_rul_fd004.yml" -g $RG -w $mlw
+Write-Host "Pipeline train -> evaluate lanciata. Controlla lo stato con - az ml job list -g $RG -w $mlw -o table"
 

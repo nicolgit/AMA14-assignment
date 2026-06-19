@@ -228,9 +228,10 @@ def train(
         json.dump({"best_val_rmse": best_val_rmse}, f, indent=2)
 
     if use_mlflow:
-        mlflow.log_artifact(str(model_path))
-        mlflow.log_artifact(str(scaler_path))
-        mlflow.log_artifact(str(metrics_path))
+        # Gli artefatti (model.pt, scaler.pkl, metrics.json) sono gia persistiti
+        # in output_dir = output 'model_output' del job, che lo step di evaluate
+        # consuma direttamente. Si evita mlflow.log_artifact per non dipendere
+        # dalla compatibilita azureml-mlflow/mlflow (azureml_artifacts_builder).
         mlflow.log_metric("best_val_rmse", best_val_rmse)
         mlflow.end_run()
 
