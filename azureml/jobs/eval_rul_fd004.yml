@@ -1,0 +1,44 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+display_name: eval-rul-cnnlstm-fd004
+experiment_name: rul-fd004
+# Serverless compute non ha managed identity e il datastore di default usa
+# auth identity-based: si usa l'identita' di chi sottomette il job (deployer
+# con Storage Blob Data Contributor) per leggere i dati e scrivere gli output.
+identity:
+  type: user_identity
+# Il codice viene preso direttamente dal repo: AML ne crea uno snapshot versionato al submit.
+code: ../../src
+command: >-
+  python evaluate.py
+  --test_data ${{inputs.test_data}}
+  --model_dir ${{inputs.model_dir}}
+  --rul_labels ${{inputs.rul_labels}}
+  --output_dir ${{outputs.eval_output}}
+  --batch_size ${{inputs.batch_size}}
+inputs:
+  # Data asset gia registrati (vedi azureml/test_fd004.yml e azureml/rul_fd004.yml).
+  test_data:
+    type: uri_file
+    path: azureml:test-fd004:1
+  rul_labels:
+    type: uri_file
+    path: azureml:rul-fd004:1
+  # Cartella con gli artefatti del training (model.pt + scaler.pkl + metrics.json).
+  # Opzione A (qui): output del job di training. Sostituire <train-job-name> col nome
+  # effettivo del run, es. azureml://jobs/<train-job-name>/outputs/model_output.
+  # Opzione B: modello registrato -> path: azureml:rul-cnnlstm-fd004:1 con type custom_model.
+  model_dir:
+    type: uri_folder
+    path: azureml://jobs/<train-job-name>/outputs/model_output
+  batch_size: 256
+outputs:
+  eval_output:
+    type: uri_folder
+environment: azureml:rul-cnnlstm-env:1
+# Serverless compute: nessun cluster da pre-creare. AML provisiona la VM al submit
+# e la rilascia a fine job. Si omette `compute` e si dichiara la VM in `resources`.
+resources:
+  instance_type: Standard_D4s_v3
+  instance_count: 1
+# Alternativa: cluster pre-creato dal bicep (cl-<resourceNameSeed>).
+# compute: azureml:cl-ama14mrodev09

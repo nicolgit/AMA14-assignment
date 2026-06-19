@@ -16,82 +16,32 @@ $acct      = az storage account list -g $RG --query "[?starts_with(name,'stml')]
 $mlw       = az ml workspace list -g $RG --query "[0].name" -o tsv
 $container = az ml datastore show -g $RG -w $mlw -n workspaceblobstore --query container_name -o tsv
 
+# Upload dei 3 file C-MAPSS ai path attesi dai data asset
+az storage blob upload --account-name $acct --container-name $container `
+  --file "$repo/CMAPPS-data/train_FD004.txt" `
+  --name "raw/cmapss/fd004/train/train_FD004.txt" --auth-mode login --overwrite
 
-# 1. Dati: upload ai percorsi esatti attesi dai data asset
-az storage blob upload --account-name $acct --auth-mode login -c $container `
-  -f "$repo/CMAPPS-data/train_FD004.txt" -n raw/cmapss/fd004/train/train_FD004.txt --overwrite
-az storage blob upload --account-name $acct --auth-mode login -c $container `
-  -f "$repo/CMAPPS-data/test_FD004.txt"  -n raw/cmapss/fd004/test/test_FD004.txt  --overwrite
-az storage blob upload --account-name $acct --auth-mode login -c $container `
-  -f "$repo/CMAPPS-data/RUL_FD004.txt"   -n raw/cmapss/fd004/rul/RUL_FD004.txt    --overwrite
+az storage blob upload --account-name $acct --container-name $container `
+  --file "$repo/CMAPPS-data/test_FD004.txt" `
+  --name "raw/cmapss/fd004/test/test_FD004.txt" --auth-mode login --overwrite
+
+az storage blob upload --account-name $acct --container-name $container `
+  --file "$repo/CMAPPS-data/RUL_FD004.txt" `
+  --name "raw/cmapss/fd004/rul/RUL_FD004.txt" --auth-mode login --overwrite
 
 # 2. Registra i data asset
 az ml data create -g $RG -w $mlw -f "$repo/azureml/train_fd004.yml"
 az ml data create -g $RG -w $mlw -f "$repo/azureml/test_fd004.yml"
 az ml data create -g $RG -w $mlw -f "$repo/azureml/rul_fd004.yml"
 
-# Environment (CNN-LSTM)
-az ml environment create -f "$repo/azureml/environment/rul-cnnlstm-env.yml" -g $RG -w $mlw
-
-# 4. Lancia il training (serverless: nessun compute da pre-creare)
-az ml job create -f "$repo/azureml/jobs/train_rul_fd004.yml" -g $RG -w $mlw
-
-
-
-
-
-# 3. Carica nella file share di Authoring tutto il necessario per il training
-#    (Azure Files share "code-<guid>"): notebooks, codice src, definizioni azureml
-#    (jobs + environment) e i dati C-MAPSS. La struttura del repo viene replicata
-#    sotto Users/<user>/AMA14-assignment/ cosi il notebook trova i percorsi attesi.
-#    Imposta AML_NOTEBOOK_USER per forzare la cartella utente (es. nicold). Altrimenti
-#    viene rilevata automaticamente la prima cartella sotto Users/.
-
-# La share dei notebook ha nome dinamico: code-<guid>
-$shareName = az storage share-rm list --resource-group $RG --storage-account $acct `
-  --query "[?starts_with(name,'code-')].name | [0]" -o tsv
-
-if (-not $shareName) {
-  Write-Host "Share dei notebook (code-*) non trovata nello storage account $acct."
-} else {
-  # Cartella utente: env var oppure prima cartella sotto Users/.
-  # Se Users/ non esiste ancora (compute mai avviata) o e' vuota, si usa il
-  # fallback AML_NOTEBOOK_USER (default 'nicold'): upload-batch crea il percorso.
-  $authoringUser = $env:AML_NOTEBOOK_USER
-  if (-not $authoringUser) {
-    # 2>$null evita che ResourceNotFound interrompa lo script.
-    $authoringUser = az storage file list --account-name $acct --auth-mode login `
-      --enable-file-backup-request-intent --share-name $shareName --path "Users" `
-      --query "[0].name" -o tsv 2>$null
-  }
-
-  if (-not $authoringUser) {
-    $authoringUser = 'nicold'
-    Write-Host "Cartella Users/ assente o vuota: uso fallback utente '$authoringUser' (override con AML_NOTEBOOK_USER)."
-  }
-
-  $projectRoot = "Users/$authoringUser/AMA14-assignment"
-  # Cartelle del repo necessarie al training, caricate ricorsivamente.
-  $folders = @('notebooks', 'src', 'azureml', 'CMAPPS-data')
-
-  foreach ($folder in $folders) {
-    $localPath = Join-Path $repo $folder
-    if (-not (Test-Path $localPath)) {
-      Write-Host "Salto $folder (non trovato in $repo)."
-      continue
-    }
-    Write-Host "Carico $folder -> $shareName/$projectRoot/$folder"
-    az storage file upload-batch --account-name $acct --auth-mode login `
-      --enable-file-backup-request-intent --destination $shareName `
-      --destination-path "$projectRoot/$folder" --source $localPath --output none
-  }
-
-  Write-Host "Artefatti di training caricati in Authoring (utente $authoringUser)."
-}
-
 # 4. Registra l'environment di training (idempotente: se la versione esiste gia,
-#    AML la riusa). Il job NON viene sottomesso: il suo YAML e' gia disponibile
-#    nella file share (step 3) e si lancia a mano dallo Studio o con:
-#      az ml job create -g $RG -w $mlw -f azureml/jobs/train_rul_fd004.yml
+#    AML la riusa). 
 az ml environment create -g $RG -w $mlw -f "$repo/azureml/environment/rul-cnnlstm-env.yml"
 Write-Host "Environment registrato. Job NON eseguito (YAML disponibile in azureml/jobs/train_rul_fd004.yml)."
+
+# 4. Lancia la pipeline train -> evaluate (serverless: nessun compute da pre-creare).
+#    La pipeline esegue i due step in sequenza e passa gli artefatti del train
+#    (model.pt + scaler.pkl) all'evaluate. Per il solo training usare invece
+#    azureml/jobs/train_rul_fd004.yml.
+az ml job create -f "$repo/azureml/jobs/pipeline_rul_fd004.yml" -g $RG -w $mlw
+

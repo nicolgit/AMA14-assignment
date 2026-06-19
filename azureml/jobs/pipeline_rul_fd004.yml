@@ -1,0 +1,91 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+display_name: rul-cnnlstm-fd004-train-eval
+experiment_name: rul-fd004
+# Serverless compute non ha managed identity e il datastore di default usa
+# auth identity-based: si usa l'identita' di chi sottomette la pipeline.
+settings:
+  default_compute: azureml:serverless
+inputs:
+  # Data asset gia registrati (azureml/train_fd004.yml, test_fd004.yml, rul_fd004.yml).
+  train_data:
+    type: uri_file
+    path: azureml:train-fd004:1
+  test_data:
+    type: uri_file
+    path: azureml:test-fd004:1
+  rul_labels:
+    type: uri_file
+    path: azureml:rul-fd004:1
+  window_size: 30
+  batch_size: 128
+  epochs: 20
+  learning_rate: 0.001
+  val_ratio: 0.2
+  max_rul: 130
+  seed: 42
+outputs:
+  # Output finale della pipeline: predictions.csv + evaluation.json.
+  eval_output:
+    type: uri_folder
+jobs:
+  train:
+    type: command
+    display_name: train-rul-cnnlstm-fd004
+    identity:
+      type: user_identity
+    code: ../../src
+    command: >-
+      python train.py
+      --train_data ${{inputs.train_data}}
+      --model_output ${{outputs.model_output}}
+      --window_size ${{inputs.window_size}}
+      --batch_size ${{inputs.batch_size}}
+      --epochs ${{inputs.epochs}}
+      --learning_rate ${{inputs.learning_rate}}
+      --val_ratio ${{inputs.val_ratio}}
+      --max_rul ${{inputs.max_rul}}
+      --seed ${{inputs.seed}}
+    inputs:
+      train_data: ${{parent.inputs.train_data}}
+      window_size: ${{parent.inputs.window_size}}
+      batch_size: ${{parent.inputs.batch_size}}
+      epochs: ${{parent.inputs.epochs}}
+      learning_rate: ${{parent.inputs.learning_rate}}
+      val_ratio: ${{parent.inputs.val_ratio}}
+      max_rul: ${{parent.inputs.max_rul}}
+      seed: ${{parent.inputs.seed}}
+    outputs:
+      model_output:
+        type: uri_folder
+    environment: azureml:rul-cnnlstm-env:1
+    resources:
+      instance_type: Standard_D4s_v3
+      instance_count: 1
+
+  evaluate:
+    type: command
+    display_name: eval-rul-cnnlstm-fd004
+    identity:
+      type: user_identity
+    code: ../../src
+    command: >-
+      python evaluate.py
+      --test_data ${{inputs.test_data}}
+      --model_dir ${{inputs.model_dir}}
+      --rul_labels ${{inputs.rul_labels}}
+      --output_dir ${{outputs.eval_output}}
+      --batch_size ${{inputs.batch_size}}
+    inputs:
+      test_data: ${{parent.inputs.test_data}}
+      rul_labels: ${{parent.inputs.rul_labels}}
+      # Dipendenza esplicita: la cartella artefatti (model.pt + scaler.pkl)
+      # arriva dall'output del job di train. AML ordina i due step di conseguenza.
+      model_dir: ${{parent.jobs.train.outputs.model_output}}
+      batch_size: 256
+    outputs:
+      eval_output: ${{parent.outputs.eval_output}}
+    environment: azureml:rul-cnnlstm-env:1
+    resources:
+      instance_type: Standard_D4s_v3
+      instance_count: 1
