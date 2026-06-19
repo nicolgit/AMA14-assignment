@@ -34,7 +34,7 @@ inputs:
 outputs:
   model_output:
     type: uri_folder
-environment: azureml:rul-cnnlstm-env:1
+environment: azureml:rul-cnnlstm-env@latest
 # Serverless compute: nessun cluster da pre-creare. AML provisiona la VM al submit
 # e la rilascia a fine job. Si omette `compute` e si dichiara la VM in `resources`.
 resources:

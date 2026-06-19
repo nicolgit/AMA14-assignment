@@ -58,7 +58,7 @@ jobs:
     outputs:
       model_output:
         type: uri_folder
-    environment: azureml:rul-cnnlstm-env:1
+    environment: azureml:rul-cnnlstm-env@latest
     resources:
       instance_type: Standard_D4s_v3
       instance_count: 1
@@ -85,7 +85,7 @@ jobs:
       batch_size: 256
     outputs:
       eval_output: ${{parent.outputs.eval_output}}
-    environment: azureml:rul-cnnlstm-env:1
+    environment: azureml:rul-cnnlstm-env@latest
     resources:
       instance_type: Standard_D4s_v3
       instance_count: 1
