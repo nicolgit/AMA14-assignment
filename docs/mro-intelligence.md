@@ -1,11 +1,8 @@
 Per costruire una piattaforma di MRO Intelligence che preveda la domanda di ricambi e ottimizzi i livelli di scorta, devi partire da:
 
 
-La soluzione deve prevedere 2 modelli nel caso di componenti con telemetria (es. motore dell'aereo)
 
-# Caso 1 componenti con telemetria
-
-esempio il motore dell'aereo
+esempio: il motore dell'aereo
 
 Un modello RUL 'impara' una curva di degradazione.
 - Prende i dati sensoriali del motore nel tempo
