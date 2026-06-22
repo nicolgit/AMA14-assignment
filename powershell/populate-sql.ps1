@@ -111,6 +111,10 @@ Set-Content -Path $sqlFile -Value $sb.ToString() -Encoding utf8
 Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count))"
 
 # 3. Esegui lo script usando un token Entra come password (passwordless)
+# `execute` vive nell'estensione rdbms-connect: installala se manca.
+az extension show --name rdbms-connect -o none 2>$null
+if ($LASTEXITCODE -ne 0) { az extension add --name rdbms-connect --only-show-errors }
+
 $upn   = az ad signed-in-user show --query userPrincipalName -o tsv
 $token = az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv
 az postgres flexible-server execute `
