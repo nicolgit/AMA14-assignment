@@ -17,6 +17,9 @@ param resourceNameSeed string = 'amamrodeve${utcNow('MMdd')}'
 @description('Microsoft Entra object ID of the user running the deployment. This principal will receive Storage Blob Data Contributor on the Data Lake account.')
 param deployerObjectId string = '6e94d310-1194-469a-af8e-bd502dcf2782' // get from `az ad signed-in-user show --query id -o tsv`
 
+@description('Microsoft Entra UPN of the deployer. Used to grant the deployer PostgreSQL Entra admin.')
+param deployerPrincipalName string = 'nicold_microsoft.com#EXT#@MngEnvMCAP361336.onmicrosoft.com' // get from `az ad signed-in-user show --query userPrincipalName -o tsv`
+
 @description('Deploy the single-user compute instance for interactive work.')
 param deployCompute bool = false
 
@@ -126,6 +129,8 @@ module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
     administratorLoginPassword: postgresAdminPassword
     entraAdminObjectId: backendIdentity.outputs.principalId
     entraAdminPrincipalName: backendIdentity.outputs.identityName
+    additionalEntraAdminObjectId: deployerObjectId
+    additionalEntraAdminPrincipalName: deployerPrincipalName
   }
 }
 

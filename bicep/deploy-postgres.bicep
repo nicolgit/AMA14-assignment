@@ -38,6 +38,20 @@ param entraAdminPrincipalName string
 ])
 param entraAdminPrincipalType string = 'ServicePrincipal'
 
+@description('Object ID of an additional Entra principal (e.g. the deployer user) to also set as PostgreSQL administrator. Empty = skip.')
+param additionalEntraAdminObjectId string = ''
+
+@description('Principal name of the additional Entra administrator (UPN for a user).')
+param additionalEntraAdminPrincipalName string = ''
+
+@description('Type of the additional Entra administrator principal.')
+@allowed([
+  'ServicePrincipal'
+  'User'
+  'Group'
+])
+param additionalEntraAdminPrincipalType string = 'User'
+
 @description('PostgreSQL major version.')
 @allowed([
   '14'
@@ -128,11 +142,27 @@ resource entraAdmin 'Microsoft.DBforPostgreSQL/flexibleServers/administrators@20
   }
 }
 
+// Additional Entra administrator (e.g. the deployer) so a human can run DDL/queries.
+// Serialized after entraAdmin to avoid concurrent server modifications.
+resource deployerAdmin 'Microsoft.DBforPostgreSQL/flexibleServers/administrators@2024-08-01' = if (!empty(additionalEntraAdminObjectId) && !empty(additionalEntraAdminPrincipalName)) {
+  parent: postgres
+  name: additionalEntraAdminObjectId
+  dependsOn: [
+    entraAdmin
+  ]
+  properties: {
+    principalType: additionalEntraAdminPrincipalType
+    principalName: additionalEntraAdminPrincipalName
+    tenantId: tenantId
+  }
+}
+
 resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-01' = {
   parent: postgres
   name: databaseName
   dependsOn: [
     entraAdmin
+    deployerAdmin
   ]
   properties: {
     charset: 'UTF8'
