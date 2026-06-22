@@ -1,3 +1,10 @@
+
+QUESTO è da CANCELLARE appena mr-detect-and-inspect.md è pronto!!!!
+
+
+===================================================
+
+
 Per costruire una piattaforma di MRO Intelligence che preveda la domanda di ricambi e ottimizzi i livelli di scorta, devi partire da:
 
 

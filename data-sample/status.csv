@@ -1,0 +1,4 @@
+status_code,status_name,description
+in-service,In Service,Aircraft operational and on the flight line
+in-maintenance,In Maintenance,Aircraft grounded for scheduled or ongoing maintenance
+AOG,Aircraft On Ground,Aircraft unexpectedly grounded due to a fault or unavailability
