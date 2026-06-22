@@ -106,7 +106,7 @@ $vals = $ac | ForEach-Object {
 [void]$sb.AppendLine("INSERT INTO aircraft (aircraft_id, model, engine_count, engine_ids, operator, total_flight_cycles, status, msn, in_service_date, total_flight_hours, base_location) VALUES")
 [void]$sb.AppendLine(($vals -join ",`n") + ";")
 
-$sqlFile = Join-Path $env:TEMP 'load-data-sample.generated.sql'
+$sqlFile = Join-Path ([System.IO.Path]::GetTempPath()) 'load-data-sample.generated.sql'
 Set-Content -Path $sqlFile -Value $sb.ToString() -Encoding utf8
 Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count))"
 
