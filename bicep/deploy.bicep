@@ -20,6 +20,16 @@ param deployerObjectId string = '6e94d310-1194-469a-af8e-bd502dcf2782' // get fr
 @description('Deploy the single-user compute instance for interactive work.')
 param deployCompute bool = false
 
+@description('Deploy the PostgreSQL Flexible Server (application/metadata store).')
+param deployPostgres bool = true
+
+@description('Deploy the Container Apps environment with backend API and frontend SPA.')
+param deployContainerApps bool = true
+
+@description('PostgreSQL administrator password. Pass at deploy time (e.g. --parameters postgresAdminPassword=...); do not commit.')
+@secure()
+param postgresAdminPassword string = 'passgres123'
+
 @description('Common tags applied to all resources.')
 param tags object = {
   workload: 'mro-intelligence'
@@ -94,6 +104,48 @@ module compute 'deploy-compute.bicep' = if (deployCompute) {
   }
 }
 
+// 7. Managed identity used by the backend to reach PostgreSQL passwordless (Entra auth)
+module backendIdentity 'deploy-identity.bicep' = {
+  name: 'deploy-identity'
+  scope: rg
+  params: {
+    location: location
+    resourceNameSeed: resourceNameSeed
+    tags: tags
+  }
+}
+
+// 8. PostgreSQL Flexible Server (small PoC SKU, Entra-only auth)
+module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
+  name: 'deploy-postgres'
+  scope: rg
+  params: {
+    location: location
+    resourceNameSeed: resourceNameSeed
+    tags: tags
+    administratorLoginPassword: postgresAdminPassword
+    entraAdminObjectId: backendIdentity.outputs.principalId
+    entraAdminPrincipalName: backendIdentity.outputs.identityName
+  }
+}
+
+// 9. Container Apps environment hosting the backend API and the frontend SPA
+module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps) {
+  name: 'deploy-containerapps'
+  scope: rg
+  params: {
+    location: location
+    resourceNameSeed: resourceNameSeed
+    tags: tags
+    logAnalyticsWorkspaceName: mlplatform.outputs.logAnalyticsWorkspaceName
+    backendUserAssignedIdentityId: backendIdentity.outputs.identityResourceId
+    backendUserAssignedIdentityClientId: backendIdentity.outputs.clientId
+    postgresFqdn: deployPostgres ? postgres.?outputs.postgresFqdn ?? '' : ''
+    postgresDatabaseName: deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''
+    postgresUser: backendIdentity.outputs.identityName
+  }
+}
+
 output resourceGroupId string = rg.id
 output dataLakeAccountName string = datalake.outputs.storageAccountName
 output dataLakeAccountId string = datalake.outputs.storageAccountId
@@ -107,3 +159,9 @@ output keyVaultName string = mlplatform.outputs.keyVaultName
 output applicationInsightsName string = mlplatform.outputs.applicationInsightsName
 output logAnalyticsWorkspaceName string = mlplatform.outputs.logAnalyticsWorkspaceName
 output mlWorkspaceStorageAccountName string = mlplatform.outputs.mlWorkspaceStorageAccountName
+output postgresServerName string = deployPostgres ? postgres.?outputs.postgresServerName ?? '' : ''
+output postgresFqdn string = deployPostgres ? postgres.?outputs.postgresFqdn ?? '' : ''
+output postgresDatabaseName string = deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''
+output containerAppsEnvironmentName string = deployContainerApps ? containerApps.?outputs.containerAppsEnvironmentName ?? '' : ''
+output backendApiFqdn string = deployContainerApps ? containerApps.?outputs.backendFqdn ?? '' : ''
+output frontendSpaFqdn string = deployContainerApps ? containerApps.?outputs.frontendFqdn ?? '' : ''

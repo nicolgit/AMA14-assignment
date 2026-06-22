@@ -1,0 +1,187 @@
+@description('Azure region.')
+param location string = resourceGroup().location
+
+@description('Deterministic seed used to build resource names across modules.')
+param resourceNameSeed string
+
+@description('Common tags.')
+param tags object = {}
+
+@description('Name of an existing Log Analytics workspace (same resource group) used for container logs.')
+param logAnalyticsWorkspaceName string
+
+@description('Container image for the backend API.')
+param backendImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
+
+@description('Container image for the frontend SPA (static web app served by a web server).')
+param frontendImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
+
+@description('Port the backend API container listens on.')
+param backendTargetPort int = 8080
+
+@description('Port the frontend SPA container listens on.')
+param frontendTargetPort int = 80
+
+@description('CPU cores per container (PoC default).')
+param cpu string = '0.25'
+
+@description('Memory per container (PoC default).')
+param memory string = '0.5Gi'
+
+@description('Minimum replicas (0 = scale to zero to save cost in a PoC).')
+param minReplicas int = 0
+
+@description('Maximum replicas.')
+param maxReplicas int = 2
+
+@description('Resource ID of the user-assigned managed identity used by the backend to reach PostgreSQL.')
+param backendUserAssignedIdentityId string = ''
+
+@description('Client ID of the backend managed identity (used by the app to acquire an Entra token).')
+param backendUserAssignedIdentityClientId string = ''
+
+@description('PostgreSQL server FQDN the backend connects to.')
+param postgresFqdn string = ''
+
+@description('PostgreSQL database name the backend connects to.')
+param postgresDatabaseName string = ''
+
+@description('PostgreSQL Entra username for the backend (the managed identity name).')
+param postgresUser string = ''
+
+var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
+var environmentName = toLower(take('cae-${nameSeedSafe}', 32))
+var backendAppName = toLower(take('api-${nameSeedSafe}', 32))
+var frontendAppName = toLower(take('web-${nameSeedSafe}', 32))
+
+resource law 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
+  name: logAnalyticsWorkspaceName
+}
+
+resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
+  name: environmentName
+  location: location
+  tags: tags
+  properties: {
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: law.properties.customerId
+        sharedKey: law.listKeys().primarySharedKey
+      }
+    }
+  }
+}
+
+var hasBackendIdentity = !empty(backendUserAssignedIdentityId)
+
+var backendEnv = concat([
+  {
+    name: 'POSTGRES_HOST'
+    value: postgresFqdn
+  }
+  {
+    name: 'POSTGRES_DATABASE'
+    value: postgresDatabaseName
+  }
+  {
+    name: 'POSTGRES_USER'
+    value: postgresUser
+  }
+], hasBackendIdentity ? [
+  {
+    name: 'AZURE_CLIENT_ID'
+    value: backendUserAssignedIdentityClientId
+  }
+] : [])
+
+// Backend API container app (external ingress so the SPA can call it from the browser).
+resource backend 'Microsoft.App/containerApps@2024-03-01' = {
+  name: backendAppName
+  location: location
+  tags: tags
+  identity: hasBackendIdentity ? {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${backendUserAssignedIdentityId}': {}
+    }
+  } : {
+    type: 'None'
+  }
+  properties: {
+    managedEnvironmentId: environment.id
+    configuration: {
+      ingress: {
+        external: true
+        targetPort: backendTargetPort
+        transport: 'auto'
+        allowInsecure: false
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'api'
+          image: backendImage
+          resources: {
+            cpu: json(cpu)
+            memory: memory
+          }
+          env: backendEnv
+        }
+      ]
+      scale: {
+        minReplicas: minReplicas
+        maxReplicas: maxReplicas
+      }
+    }
+  }
+}
+
+// Frontend SPA container app (public entry point).
+resource frontend 'Microsoft.App/containerApps@2024-03-01' = {
+  name: frontendAppName
+  location: location
+  tags: tags
+  properties: {
+    managedEnvironmentId: environment.id
+    configuration: {
+      ingress: {
+        external: true
+        targetPort: frontendTargetPort
+        transport: 'auto'
+        allowInsecure: false
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'web'
+          image: frontendImage
+          resources: {
+            cpu: json(cpu)
+            memory: memory
+          }
+          // The SPA reaches the backend via its public FQDN.
+          env: [
+            {
+              name: 'BACKEND_API_URL'
+              value: 'https://${backend.properties.configuration.ingress.fqdn}'
+            }
+          ]
+        }
+      ]
+      scale: {
+        minReplicas: minReplicas
+        maxReplicas: maxReplicas
+      }
+    }
+  }
+}
+
+output containerAppsEnvironmentName string = environment.name
+output containerAppsEnvironmentId string = environment.id
+output backendAppName string = backend.name
+output backendFqdn string = backend.properties.configuration.ingress.fqdn
+output frontendAppName string = frontend.name
+output frontendFqdn string = frontend.properties.configuration.ingress.fqdn
