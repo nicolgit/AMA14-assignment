@@ -1,3 +1,13 @@
 *.bkp
 ~$*.pptx
 output*
+
+# Environment variables (may contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Python virtual environments
+.venv/
+venv/
+__pycache__/
