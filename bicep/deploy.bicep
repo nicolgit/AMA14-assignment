@@ -20,9 +20,6 @@ param deployerObjectId string = '6e94d310-1194-469a-af8e-bd502dcf2782' // get fr
 @description('Microsoft Entra UPN of the deployer. Used to grant the deployer PostgreSQL Entra admin.')
 param deployerPrincipalName string = 'nicold_microsoft.com#EXT#@MngEnvMCAP361336.onmicrosoft.com' // get from `az ad signed-in-user show --query userPrincipalName -o tsv`
 
-@description('Deploy the single-user compute instance for interactive work.')
-param deployCompute bool = false
-
 @description('Deploy the PostgreSQL Flexible Server (application/metadata store).')
 param deployPostgres bool = true
 
@@ -91,23 +88,7 @@ module currentUserMlStorage 'current-user.bicep' = {
   }
 }
 
-// 6. Compute Instance (created last, after the file-privileged RBAC is in place
-//    so the instance can mount the workspace storage without StorageMountError).
-module compute 'deploy-compute.bicep' = if (deployCompute) {
-  name: 'deploy-compute'
-  scope: rg
-  dependsOn: [
-    currentUserMlStorage
-  ]
-  params: {
-    location: location
-    resourceNameSeed: resourceNameSeed
-    mlWorkspaceName: mlplatform.outputs.mlWorkspaceName
-    computeInstanceAssignedUserObjectId: deployerObjectId
-  }
-}
-
-// 7. Managed identity used by the backend to reach PostgreSQL passwordless (Entra auth)
+// 6. Managed identity used by the backend to reach PostgreSQL passwordless (Entra auth)
 module backendIdentity 'deploy-identity.bicep' = {
   name: 'deploy-identity'
   scope: rg
@@ -118,7 +99,7 @@ module backendIdentity 'deploy-identity.bicep' = {
   }
 }
 
-// 8. PostgreSQL Flexible Server (small PoC SKU, Entra-only auth)
+// 7. PostgreSQL Flexible Server (small PoC SKU, Entra-only auth)
 module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
   name: 'deploy-postgres'
   scope: rg
@@ -134,7 +115,7 @@ module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
   }
 }
 
-// 9. Container Apps environment hosting the backend API and the frontend SPA
+// 8. Container Apps environment hosting the backend API and the frontend SPA
 module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps) {
   name: 'deploy-containerapps'
   scope: rg
@@ -158,7 +139,6 @@ output dataLakePrimaryDfsEndpoint string = datalake.outputs.primaryDfsEndpoint
 output currentUserBlobDataContributorRoleAssignmentId string = currentUser.outputs.storageBlobDataContributorRoleAssignmentId
 output mlWorkspaceStorageBlobDataContributorRoleAssignmentId string = currentUserMlStorage.outputs.storageBlobDataContributorRoleAssignmentId
 output mlWorkspaceName string = mlplatform.outputs.mlWorkspaceName
-output mlComputeInstanceName string = deployCompute ? compute.?outputs.mlComputeInstanceName ?? '' : ''
 output mlOnlineEndpointName string = mlplatform.outputs.mlOnlineEndpointName
 output keyVaultName string = mlplatform.outputs.keyVaultName
 output applicationInsightsName string = mlplatform.outputs.applicationInsightsName
