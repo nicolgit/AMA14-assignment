@@ -26,13 +26,17 @@ param deployPostgres bool = true
 @description('Deploy the Container Apps environment with backend API and frontend SPA.')
 param deployContainerApps bool = true
 
+// username esempio adminuser@pg-amamrodeve0623
+@description('PostgreSQL administrator login name (local password auth).')
+param postgresAdminLogin string = 'nicola'
+
 @description('PostgreSQL administrator password. Pass at deploy time (e.g. --parameters postgresAdminPassword=...); do not commit.')
 @secure()
-param postgresAdminPassword string = 'passgres123'
+param postgresAdminPassword string = 'PassGres123!'
 
 @description('Common tags applied to all resources.')
 param tags object = {
-  workload: 'mro-intelligence'
+  workload: 'hangarmind'
   environment: 'dev'
   owner: 'nicola delfino and his agents crew'
   costCenter: 'mro-data'
@@ -99,7 +103,7 @@ module backendIdentity 'deploy-identity.bicep' = {
   }
 }
 
-// 7. PostgreSQL Flexible Server (small PoC SKU, Entra-only auth)
+// 7. PostgreSQL Flexible Server (small PoC SKU, Entra + password auth)
 module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
   name: 'deploy-postgres'
   scope: rg
@@ -107,6 +111,8 @@ module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
+    authMode: 'EntraAndPassword'
+    administratorLogin: postgresAdminLogin
     administratorLoginPassword: postgresAdminPassword
     entraAdminObjectId: backendIdentity.outputs.principalId
     entraAdminPrincipalName: backendIdentity.outputs.identityName

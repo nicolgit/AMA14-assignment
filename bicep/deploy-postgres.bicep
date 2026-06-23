@@ -12,7 +12,7 @@ param administratorLogin string = 'pgadmin'
 
 @description('PostgreSQL administrator password. Only used when password authentication is enabled. Pass at deploy time; do not commit.')
 @secure()
-param administratorLoginPassword string = ''
+param administratorLoginPassword string = 'PassGres.123'
 
 @description('Authentication mode. EntraOnly = Entra ID only, no secrets (default). EntraAndPassword also allows the local admin password.')
 @allowed([
