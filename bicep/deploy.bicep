@@ -70,9 +70,9 @@ module currentUser 'current-user.bicep' = {
   }
 }
 
-// 4. ML + Monitoring platform
-module mlplatform 'deploy-ml.bicep' = {
-  name: 'deploy-ml'
+// 4. Container Registry associated with the ML workspace
+module acr 'deploy-acr.bicep' = {
+  name: 'deploy-acr'
   scope: rg
   params: {
     location: location
@@ -81,7 +81,19 @@ module mlplatform 'deploy-ml.bicep' = {
   }
 }
 
-// 5. RBAC on current user for the AML workspace storage account
+// 5. ML + Monitoring platform
+module mlplatform 'deploy-ml.bicep' = {
+  name: 'deploy-ml'
+  scope: rg
+  params: {
+    location: location
+    resourceNameSeed: resourceNameSeed
+    tags: tags
+    containerRegistryId: acr.outputs.containerRegistryId
+  }
+}
+
+// 6. RBAC on current user for the AML workspace storage account
 module currentUserMlStorage 'current-user.bicep' = {
   name: 'current-user-ml-storage'
   scope: rg
@@ -92,7 +104,7 @@ module currentUserMlStorage 'current-user.bicep' = {
   }
 }
 
-// 6. Managed identity used by the backend to reach PostgreSQL passwordless (Entra auth)
+// 7. Managed identity used by the backend to reach PostgreSQL passwordless (Entra auth)
 module backendIdentity 'deploy-identity.bicep' = {
   name: 'deploy-identity'
   scope: rg
@@ -103,7 +115,7 @@ module backendIdentity 'deploy-identity.bicep' = {
   }
 }
 
-// 7. PostgreSQL Flexible Server (small PoC SKU, Entra + password auth)
+// 8. PostgreSQL Flexible Server (small PoC SKU, Entra + password auth)
 module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
   name: 'deploy-postgres'
   scope: rg
@@ -121,7 +133,7 @@ module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
   }
 }
 
-// 8. Container Apps environment hosting the backend API and the frontend SPA
+// 9. Container Apps environment hosting the backend API and the frontend SPA
 module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps) {
   name: 'deploy-containerapps'
   scope: rg
@@ -132,6 +144,7 @@ module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps) {
     logAnalyticsWorkspaceName: mlplatform.outputs.logAnalyticsWorkspaceName
     backendUserAssignedIdentityId: backendIdentity.outputs.identityResourceId
     backendUserAssignedIdentityClientId: backendIdentity.outputs.clientId
+    applicationInsightsConnectionString: mlplatform.outputs.applicationInsightsConnectionString
     postgresFqdn: deployPostgres ? postgres.?outputs.postgresFqdn ?? '' : ''
     postgresDatabaseName: deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''
     postgresUser: backendIdentity.outputs.identityName
@@ -150,8 +163,8 @@ output keyVaultName string = mlplatform.outputs.keyVaultName
 output applicationInsightsName string = mlplatform.outputs.applicationInsightsName
 output logAnalyticsWorkspaceName string = mlplatform.outputs.logAnalyticsWorkspaceName
 output mlWorkspaceStorageAccountName string = mlplatform.outputs.mlWorkspaceStorageAccountName
-output containerRegistryName string = mlplatform.outputs.containerRegistryName
-output containerRegistryLoginServer string = mlplatform.outputs.containerRegistryLoginServer
+output containerRegistryName string = acr.outputs.containerRegistryName
+output containerRegistryLoginServer string = acr.outputs.containerRegistryLoginServer
 output postgresServerName string = deployPostgres ? postgres.?outputs.postgresServerName ?? '' : ''
 output postgresFqdn string = deployPostgres ? postgres.?outputs.postgresFqdn ?? '' : ''
 output postgresDatabaseName string = deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''

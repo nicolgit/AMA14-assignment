@@ -49,6 +49,9 @@ param postgresDatabaseName string = ''
 @description('PostgreSQL Entra username for the backend (the managed identity name).')
 param postgresUser string = ''
 
+@description('Application Insights connection string. Shared by all telemetry-capable services so traces land in one instance.')
+param applicationInsightsConnectionString string = ''
+
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
 var environmentName = toLower(take('cae-${nameSeedSafe}', 32))
 var backendAppName = toLower(take('api-${nameSeedSafe}', 32))
@@ -74,6 +77,14 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
 }
 
 var hasBackendIdentity = !empty(backendUserAssignedIdentityId)
+var hasAppInsights = !empty(applicationInsightsConnectionString)
+
+var appInsightsEnv = hasAppInsights ? [
+  {
+    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+    value: applicationInsightsConnectionString
+  }
+] : []
 
 var backendEnv = concat([
   {
@@ -93,7 +104,7 @@ var backendEnv = concat([
     name: 'AZURE_CLIENT_ID'
     value: backendUserAssignedIdentityClientId
   }
-] : [])
+] : [], appInsightsEnv)
 
 // Backend API container app (external ingress so the SPA can call it from the browser).
 resource backend 'Microsoft.App/containerApps@2024-03-01' = {
@@ -163,12 +174,12 @@ resource frontend 'Microsoft.App/containerApps@2024-03-01' = {
             memory: memory
           }
           // The SPA reaches the backend via its public FQDN.
-          env: [
+          env: concat([
             {
               name: 'BACKEND_API_URL'
               value: 'https://${backend.properties.configuration.ingress.fqdn}'
             }
-          ]
+          ], appInsightsEnv)
         }
       ]
       scale: {
