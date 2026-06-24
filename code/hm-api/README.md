@@ -37,6 +37,35 @@ uvicorn app.main:app --reload --port 8080
 API available at: `http://localhost:8080`  
 Swagger docs at: `http://localhost:8080/docs`
 
+## Database connectivity (PostgreSQL)
+
+The API connects to PostgreSQL in two mutually exclusive modes, selected purely by environment variables. Check the connection with `GET /v1/db/ping`.
+
+### Local development — explicit connection string
+
+Set a single `DATABASE_URL` with embedded credentials:
+
+```powershell
+$env:DATABASE_URL = "postgresql://nicola:PassGres123!@localhost:5432/hangarmind"
+uvicorn app.main:app --reload --port 8080
+```
+
+The `postgresql://` prefix is automatically routed to the installed `psycopg` (v3) driver.
+
+### Production — Entra auth via managed identity
+
+When `DATABASE_URL` is **not** set, the app authenticates to Azure Database for PostgreSQL using the container's managed identity (no passwords). It acquires a short-lived Entra token and uses it as the connection password on every new connection. These variables are injected by the Container Apps deployment:
+
+| Variable | Purpose |
+|----------|---------|
+| `POSTGRES_HOST` | Server FQDN (e.g. `pg-xxx.postgres.database.azure.com`) |
+| `POSTGRES_DATABASE` | Database name |
+| `POSTGRES_USER` | Entra principal name (the managed identity name) |
+| `AZURE_CLIENT_ID` | Client ID of the user-assigned identity to use |
+| `POSTGRES_PORT` | Optional, defaults to `5432` |
+
+`sslmode=require` is enforced automatically in this mode.
+
 ## Run in debug mode (VS Code)
 
 1. Open the `hm-api` folder in VS Code
