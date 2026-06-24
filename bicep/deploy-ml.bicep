@@ -14,6 +14,14 @@ param tags object = {}
 ])
 param mlWorkspaceStorageSku string = 'Standard_LRS'
 
+@description('Container Registry SKU. Basic is sufficient for a single-workspace PoC.')
+@allowed([
+  'Basic'
+  'Standard'
+  'Premium'
+])
+param containerRegistrySku string = 'Standard'
+
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
 var keyVaultName = toLower(take('kv-${resourceNameSeed}', 24))
 var appInsightsName = take('appi-${resourceNameSeed}', 60)
@@ -21,6 +29,7 @@ var logAnalyticsName = take('law-${resourceNameSeed}', 63)
 var mlWorkspaceName = take('mlw-${resourceNameSeed}', 33)
 var mlEndpointName = toLower(take('rul-${resourceNameSeed}', 32))
 var mlWorkspaceStorageName = toLower(take('stml${nameSeedSafe}', 24))
+var containerRegistryName = toLower(take('acr${nameSeedSafe}${uniqueString(resourceGroup().id)}', 50))
 
 resource mlWorkspaceStorage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   name: mlWorkspaceStorageName
@@ -89,6 +98,20 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
+  name: containerRegistryName
+  location: location
+  tags: tags
+  sku: {
+    name: containerRegistrySku
+  }
+  properties: {
+    // AML uses its workspace managed identity to pull/push images; admin user not needed.
+    adminUserEnabled: false
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
@@ -123,6 +146,7 @@ resource mlWorkspace 'Microsoft.MachineLearningServices/workspaces@2024-10-01-pr
     applicationInsights: applicationInsights.id
     keyVault: keyVault.id
     storageAccount: mlWorkspaceStorage.id
+    containerRegistry: containerRegistry.id
     // Public workspace: inbound from all networks, outbound to public internet.
     publicNetworkAccess: 'Enabled'
     // Identity-based access to the default storage datastores.
@@ -170,3 +194,6 @@ output keyVaultName string = keyVault.name
 output mlWorkspaceName string = mlWorkspace.name
 output mlWorkspaceStorageAccountName string = mlWorkspaceStorage.name
 output mlOnlineEndpointName string = onlineEndpoint.name
+output containerRegistryName string = containerRegistry.name
+output containerRegistryId string = containerRegistry.id
+output containerRegistryLoginServer string = containerRegistry.properties.loginServer
