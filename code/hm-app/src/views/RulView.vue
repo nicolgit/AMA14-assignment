@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
+import StatusBadge from '../components/StatusBadge.vue'
 import { API_BASE_URL } from '../config'
 
 interface Aircraft {
@@ -17,7 +18,13 @@ interface Aircraft {
   base_location: string | null
 }
 
+interface Evaluation {
+  name: string
+  value: number
+}
+
 const aircraft = ref<Aircraft[]>([])
+const evaluations = ref<Evaluation[]>([])
 const loading = ref(false)
 const error = ref('')
 
@@ -45,18 +52,24 @@ async function loadAircraft() {
   loading.value = true
   error.value = ''
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/aircraft`)
-    if (!res.ok) {
-      let detail = `HTTP ${res.status}`
-      try {
-        const body = await res.json()
-        if (body?.detail) detail = body.detail
-      } catch {
-        /* response had no JSON body */
+    const [acRes, evalRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/v1/aircraft`),
+      fetch(`${API_BASE_URL}/v1/evaluations`),
+    ])
+    for (const res of [acRes, evalRes]) {
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`
+        try {
+          const body = await res.json()
+          if (body?.detail) detail = body.detail
+        } catch {
+          /* response had no JSON body */
+        }
+        throw new Error(detail)
       }
-      throw new Error(detail)
     }
-    aircraft.value = await res.json()
+    aircraft.value = await acRes.json()
+    evaluations.value = await evalRes.json()
     currentPage.value = 1
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
@@ -78,6 +91,13 @@ onMounted(loadAircraft)
       <p v-else-if="aircraft.length === 0" class="state">No aircraft found.</p>
 
       <template v-else>
+        <div class="metrics-row">
+          <span v-for="ev in evaluations" :key="ev.name" class="metric">
+            <span class="metric-name">{{ ev.name.toUpperCase() }}</span>
+            <span class="metric-value">{{ ev.value.toFixed(2) }}</span>
+          </span>
+        </div>
+
         <table class="aircraft-table">
           <thead>
             <tr>
@@ -96,7 +116,14 @@ onMounted(loadAircraft)
               <td>{{ ac.aircraft_id }}</td>
               <td>{{ ac.model }}</td>
               <td>{{ ac.operator }}</td>
-              <td>{{ ac.engine_count }}</td>
+              <td>
+                <StatusBadge
+                  v-for="eng in (ac.engine_ids?.split(';') ?? [])"
+                  :key="eng"
+                  :label="eng.trim()"
+                  status="green"
+                />
+              </td>
               <td>{{ ac.status }}</td>
               <td>{{ ac.total_flight_cycles }}</td>
               <td>{{ ac.total_flight_hours }}</td>
@@ -145,6 +172,35 @@ onMounted(loadAircraft)
 .state--error {
   color: #e5484d;
   font-weight: 600;
+}
+
+.metrics-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  border-radius: 10px;
+}
+
+.metric-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--accent);
+}
+
+.metric-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-h);
 }
 
 .aircraft-table {
