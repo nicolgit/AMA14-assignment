@@ -80,7 +80,7 @@ param skuTier string = 'Burstable'
 param storageSizeGB int = 32
 
 @description('Initial application database to create.')
-param databaseName string = 'mro'
+param databaseName string = 'hangarmind'
 
 @description('Allow other Azure services to reach the server (PoC convenience). Disable and use Private Endpoint in prod.')
 param allowAzureServices bool = true

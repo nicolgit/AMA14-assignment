@@ -45,11 +45,6 @@ The API connects to PostgreSQL in two mutually exclusive modes, selected purely 
 
 Set a single `DATABASE_URL` with embedded credentials:
 
-```powershell
-$env:DATABASE_URL = "postgresql://nicola:PassGres123!@localhost:5432/hangarmind"
-uvicorn app.main:app --reload --port 8080
-```
-
 The `postgresql://` prefix is automatically routed to the installed `psycopg` (v3) driver.
 
 ### Production — Entra auth via managed identity
@@ -77,6 +72,7 @@ The SPA (`hm-app`) runs on a different origin, so cross-origin requests must be 
 ```powershell
 # Example: allow the local dev SPA origin
 $env:CORS_ORIGINS = "http://localhost:5173"
+$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0629.postgres.database.azure.com:5432/hangarmind"
 uvicorn app.main:app --reload --port 8080
 ```
 

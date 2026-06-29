@@ -13,7 +13,7 @@ param(
   [string]$RG = 'ama-mro-playground'
 )
 
-$DB = 'mro'
+$DB = 'hangarmind'
 
 $base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
 $repo = Split-Path $base -Parent
