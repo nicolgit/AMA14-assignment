@@ -33,6 +33,10 @@ function ConvertTo-SqlInt($v) {
   if ($null -eq $v -or "$v" -eq '') { return 'NULL' }
   return [string][int]$v
 }
+function ConvertTo-SqlFloat($v) {
+  if ($null -eq $v -or "$v" -eq '') { return 'NULL' }
+  return [string]([double]$v).ToString([System.Globalization.CultureInfo]::InvariantCulture)
+}
 
 $sb = New-Object System.Text.StringBuilder
 
@@ -64,10 +68,22 @@ CREATE TABLE IF NOT EXISTS aircraft (
   base_location       text REFERENCES location(location_code)
 );
 
+CREATE TABLE IF NOT EXISTS prediction (
+  engine_id     int PRIMARY KEY,
+  predicted_rul real
+);
+
+CREATE TABLE IF NOT EXISTS evaluation (
+  name  text PRIMARY KEY,
+  value real
+);
+
 -- ricarica pulita (idempotente)
 TRUNCATE TABLE aircraft;
 TRUNCATE TABLE location CASCADE;
 TRUNCATE TABLE status   CASCADE;
+TRUNCATE TABLE prediction;
+TRUNCATE TABLE evaluation;
 '@)
 
 # --- location ---
@@ -106,9 +122,27 @@ $vals = $ac | ForEach-Object {
 [void]$sb.AppendLine("INSERT INTO aircraft (aircraft_id, model, engine_count, engine_ids, operator, total_flight_cycles, status, msn, in_service_date, total_flight_hours, base_location) VALUES")
 [void]$sb.AppendLine(($vals -join ",`n") + ";")
 
+# --- prediction ---
+$predFile = Join-Path $repo 'ml-outputs/predictions.csv'
+$pred = Import-Csv $predFile
+$vals = $pred | ForEach-Object {
+  "($(ConvertTo-SqlInt $_.engine_id), $(ConvertTo-SqlFloat $_.predicted_rul))"
+}
+[void]$sb.AppendLine("INSERT INTO prediction (engine_id, predicted_rul) VALUES")
+[void]$sb.AppendLine(($vals -join ",`n") + ";")
+
+# --- evaluation ---
+$evalFile = Join-Path $repo 'ml-outputs/evaluation.json'
+$eval = Get-Content $evalFile -Raw | ConvertFrom-Json
+$vals = $eval.PSObject.Properties | ForEach-Object {
+  "($(ConvertTo-SqlText $_.Name), $(ConvertTo-SqlFloat $_.Value))"
+}
+[void]$sb.AppendLine("INSERT INTO evaluation (name, value) VALUES")
+[void]$sb.AppendLine(($vals -join ",`n") + ";")
+
 $sqlFile = Join-Path ([System.IO.Path]::GetTempPath()) 'load-data-sample.generated.sql'
 Set-Content -Path $sqlFile -Value $sb.ToString() -Encoding utf8
-Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count))"
+Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count), prediction=$($pred.Count), evaluation=$($eval.PSObject.Properties.Count))"
 
 # 3. Esegui lo script usando un token Entra come password (passwordless)
 # `execute` vive nell'estensione rdbms-connect: installala se manca.
