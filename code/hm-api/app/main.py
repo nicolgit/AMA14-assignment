@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import hello
 from app.routers import db
+from app.routers import aircraft
 
 app = FastAPI(
     title="Hangar Mind API",
@@ -29,6 +30,7 @@ app.add_middleware(
 
 app.include_router(hello.router, prefix="/v1")
 app.include_router(db.router, prefix="/v1")
+app.include_router(aircraft.router, prefix="/v1")
 
 
 @app.get("/health")
