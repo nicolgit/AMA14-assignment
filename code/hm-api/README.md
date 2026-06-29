@@ -4,7 +4,7 @@ Backend API service built with **FastAPI** (Python).
 
 ## Prerequisites
 
-- Python 3.11+ installed (`winget install -e --id Python.Python.3.12 --source winget --accept-package-agreements --accept-source-agreements`)
+- Python 3.11+ amd64 installed 
 - During installation, check **"Add Python to PATH"**
 
 ## Setup (first time or after pulling new dependencies)
@@ -30,7 +30,10 @@ pip install -r requirements.txt
 # Activate venv (if not already active)
 .\.venv\Scripts\Activate.ps1
 
-# Start with hot-reload
+# Start with hot-reload - DEVELOPMENT
+$env:CORS_ORIGINS = "http://localhost:5173"
+$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0629.postgres.database.azure.com:5432/hangarmind"
+
 uvicorn app.main:app --reload --port 8080
 ```
 
@@ -69,12 +72,6 @@ The SPA (`hm-app`) runs on a different origin, so cross-origin requests must be 
 |----------|---------|
 | `CORS_ORIGINS` | Comma-separated allowed origins. Defaults to `http://localhost:5173` |
 
-```powershell
-# Example: allow the local dev SPA origin
-$env:CORS_ORIGINS = "http://localhost:5173"
-$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0629.postgres.database.azure.com:5432/hangarmind"
-uvicorn app.main:app --reload --port 8080
-```
 
 ## Run in debug mode (VS Code)
 
