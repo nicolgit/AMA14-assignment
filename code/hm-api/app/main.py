@@ -1,4 +1,7 @@
+import os
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.routers import hello
 from app.routers import db
 
@@ -6,6 +9,22 @@ app = FastAPI(
     title="Hangar Mind API",
     version="0.1.0",
     description="Backend API for Hangar Mind MRO platform.",
+)
+
+# Comma-separated list of allowed SPA origins, e.g.
+# "https://hm-app.prod,https://staging.hm-app". Defaults to the local Vite dev server.
+cors_origins = [
+    o.strip()
+    for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+    if o.strip()
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(hello.router, prefix="/v1")

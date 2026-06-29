@@ -66,6 +66,20 @@ When `DATABASE_URL` is **not** set, the app authenticates to Azure Database for 
 
 `sslmode=require` is enforced automatically in this mode.
 
+## CORS (frontend access)
+
+The SPA (`hm-app`) runs on a different origin, so cross-origin requests must be allowed. Configure the allowed origins via the `CORS_ORIGINS` environment variable (comma-separated). It defaults to the local Vite dev server.
+
+| Variable | Purpose |
+|----------|---------|
+| `CORS_ORIGINS` | Comma-separated allowed origins. Defaults to `http://localhost:5173` |
+
+```powershell
+# Example: allow the local dev SPA origin
+$env:CORS_ORIGINS = "http://localhost:5173"
+uvicorn app.main:app --reload --port 8080
+```
+
 ## Run in debug mode (VS Code)
 
 1. Open the `hm-api` folder in VS Code
