@@ -6,7 +6,7 @@ nel workflow di un sistema MRO il passo "**Detect & Inspect**" è fondamentale: 
 * evitare interruzioni operative
 * garantire affidabilità e continuità di servizio
 
-in questa fase come ci può aiutare l'AI? mettendoci a disposizione un sistema che permetta di prevedere il **RUL - remaining useful time** ovvero il numero di cicli di funzionamento che in un dato istante restano ad una componente dell'aereo. Nel momento in cui riusciamo a prevedere con precisione quando un componente si romperà, potremo fare delle operazioni di manutenzione programmata e preventiva che permetteranno di eliminare il rischio di malfuzionamento inaspettato e aumento delle ore di AOG (aircraft on ground).
+in questa fase come ci può aiutare l'AI? mettendoci a disposizione un sistema che permetta di prevedere il **RUL - remaining useful time** ovvero il numero di cicli di funzionamento che in un dato istante restano ad una componente dell'aereo. Nel momento in cui riusciamo a prevedere con precisione quando un componente si romperà, potremo fare delle operazioni di manutenzione programmata e preventiva che permetteranno di eliminare il rischio di malfuzionamento inaspettato e diminuzione delle ore di AOG (aircraft on ground).
 
 Un modello RUL, in sostanza 'impara' una curva di degradazione:
 
@@ -61,7 +61,7 @@ un modello è definito da 3 file:
 # come fare l'evaluate del modello generato
 L'idea di fondo è la seguente: prendere il modello addestrato e misurarne la **bravura** su motori mai visti (il set test_FD*), confrontando le predizioni con le risposte vere.
 
-la sequenza test di CMAPSS è troncato: la serie si ferma "**a un certo punto prima del guasto**" e la domanda è "**quanto RUL resta da QUEL momento?**"
+la sequenza test di CMAPSS è troncata: la serie si ferma "**a un certo punto prima del guasto**" e la domanda è "**quanto RUL resta da QUEL momento?**"
 
 il modello fa una sua predizione e salva il risultato in predictions.csv (engine_id → predicted_rul).
 
@@ -132,6 +132,8 @@ per un componente safety-critical si usa $z$ alto; per uno non critico $z$ basso
 il **MAE** si usa per comunicare all'operatore l'errore tipico atteso ("in media ±26 cicli"); l'**RMSE** si usa per dimensionare il margine di sicurezza, perché pesa di più gli errori gravi (le sovrastime pericolose).
 
 ## passo 2 — confronta con il lead time richiesto
+
+> lead time: tempo di approvvigionamento
 
 si definisce il tempo necessario per intervenire, espresso in cicli:
 
