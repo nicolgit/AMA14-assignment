@@ -68,6 +68,14 @@ CREATE TABLE IF NOT EXISTS aircraft (
   base_location       text REFERENCES location(location_code)
 );
 
+CREATE TABLE IF NOT EXISTS engine (
+  engineid              text PRIMARY KEY,
+  manifacturer          text,
+  engine_serial_number  text,
+  position_on_iarcraft  text,
+  installation_date     date
+);
+
 CREATE TABLE IF NOT EXISTS prediction (
   engine_id     int PRIMARY KEY,
   predicted_rul real
@@ -80,6 +88,7 @@ CREATE TABLE IF NOT EXISTS evaluation (
 
 -- ricarica pulita (idempotente)
 TRUNCATE TABLE aircraft;
+TRUNCATE TABLE engine;
 TRUNCATE TABLE location CASCADE;
 TRUNCATE TABLE status   CASCADE;
 TRUNCATE TABLE prediction;
@@ -122,6 +131,20 @@ $vals = $ac | ForEach-Object {
 [void]$sb.AppendLine("INSERT INTO aircraft (aircraft_id, model, engine_count, engine_ids, operator, total_flight_cycles, status, msn, in_service_date, total_flight_hours, base_location) VALUES")
 [void]$sb.AppendLine(($vals -join ",`n") + ";")
 
+# --- engine ---
+$eng = Import-Csv (Join-Path $sampleDir 'engine.csv')
+$vals = $eng | ForEach-Object {
+  '(' + (@(
+    ConvertTo-SqlText $_.engineid
+    ConvertTo-SqlText $_.manifacturer
+    ConvertTo-SqlText $_.engine_serial_number
+    ConvertTo-SqlText $_.position_on_iarcraft
+    ConvertTo-SqlText $_.installation_date
+  ) -join ', ') + ')'
+}
+[void]$sb.AppendLine("INSERT INTO engine (engineid, manifacturer, engine_serial_number, position_on_iarcraft, installation_date) VALUES")
+[void]$sb.AppendLine(($vals -join ",`n") + ";")
+
 # --- prediction ---
 $predFile = Join-Path $repo 'ml-outputs/predictions.csv'
 $pred = Import-Csv $predFile
@@ -142,7 +165,7 @@ $vals = $eval.PSObject.Properties | ForEach-Object {
 
 $sqlFile = Join-Path ([System.IO.Path]::GetTempPath()) 'load-data-sample.generated.sql'
 Set-Content -Path $sqlFile -Value $sb.ToString() -Encoding utf8
-Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count), prediction=$($pred.Count), evaluation=$($eval.PSObject.Properties.Count))"
+Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count), engine=$($eng.Count), prediction=$($pred.Count), evaluation=$($eval.PSObject.Properties.Count))"
 
 # 3. Esegui lo script usando un token Entra come password (passwordless)
 # `execute` vive nell'estensione rdbms-connect: installala se manca.

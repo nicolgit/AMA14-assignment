@@ -25,12 +25,21 @@ interface Location {
   place: string
 }
 
+interface Engine {
+  engineid: string
+  manifacturer: string | null
+  engine_serial_number: string | null
+  position_on_iarcraft: string | null
+  installation_date: string | null
+}
+
 const route = useRoute()
 
 const loading = ref(false)
 const error = ref('')
 const aircraft = ref<Aircraft | null>(null)
 const location = ref<Location | null>(null)
+const engines = ref<Engine[]>([])
 
 const aircraftId = computed(() => String(route.params.aircraftid ?? ''))
 
@@ -57,6 +66,7 @@ async function loadAircraft() {
   error.value = ''
   aircraft.value = null
   location.value = null
+  engines.value = []
 
   try {
     const res = await fetch(`${API_BASE_URL}/v1/aircraft/${encodeURIComponent(aircraftId.value)}`)
@@ -82,6 +92,25 @@ async function loadAircraft() {
       } catch {
         // Best effort: if location API fails, keep showing raw location code.
       }
+    }
+
+    const ids = (aircraft.value?.engine_ids?.split(';') ?? [])
+      .map((id) => id.trim())
+      .filter(Boolean)
+
+    if (ids.length > 0) {
+      const responses = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const r = await fetch(`${API_BASE_URL}/v1/engine/${encodeURIComponent(id)}`)
+            if (!r.ok) return null
+            return (await r.json()) as Engine
+          } catch {
+            return null
+          }
+        }),
+      )
+      engines.value = responses.filter((x): x is Engine => x !== null)
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
@@ -154,6 +183,33 @@ onMounted(loadAircraft)
                     status="green"
                   />
                 </template>
+                <span v-else>—</span>
+              </dd>
+            </div>
+
+            <div class="field field--full">
+              <dt>Engine Details</dt>
+              <dd>
+                <table v-if="engines.length > 0" class="engine-table">
+                  <thead>
+                    <tr>
+                      <th>Engine ID</th>
+                      <th>Manufacturer</th>
+                      <th>Serial Number</th>
+                      <th>Position</th>
+                      <th>Installation Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="eng in engines" :key="eng.engineid">
+                      <td>{{ eng.engineid }}</td>
+                      <td>{{ eng.manifacturer ?? '—' }}</td>
+                      <td>{{ eng.engine_serial_number ?? '—' }}</td>
+                      <td>{{ eng.position_on_iarcraft ?? '—' }}</td>
+                      <td>{{ eng.installation_date ?? '—' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
                 <span v-else>—</span>
               </dd>
             </div>
@@ -246,6 +302,26 @@ onMounted(loadAircraft)
   margin: 0;
   color: var(--text-h);
   font-weight: 600;
+}
+
+.engine-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.engine-table th,
+.engine-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.engine-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text);
 }
 
 .field--full {

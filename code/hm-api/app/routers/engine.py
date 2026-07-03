@@ -7,7 +7,31 @@ router = APIRouter()
 
 
 @router.get("/engine/{engineid}")
-def get_engine_data(engineid: int):
+def get_engine_registry(engineid: str):
+    """Return one engine from the ``engine`` registry table by engine id."""
+    query = text(
+        """
+        SELECT engineid, manifacturer, engine_serial_number,
+               position_on_iarcraft, installation_date
+        FROM engine
+        WHERE engineid = :engine_id
+        """
+    )
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            row = conn.execute(query, {"engine_id": engineid}).mappings().first()
+    except Exception as exc:  # surface a clean 503 instead of a 500 stack trace
+        raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
+
+    if not row:
+        raise HTTPException(status_code=404, detail=f"engine {engineid} not found")
+
+    return dict(row)
+
+
+@router.get("/engine/{id}/data")
+def get_engine_data(id: int):
     """Return all cycles from ``engine_data`` for the selected engine id."""
     query = text(
         """
@@ -28,11 +52,11 @@ def get_engine_data(engineid: int):
     try:
         engine = get_engine()
         with engine.connect() as conn:
-            rows = conn.execute(query, {"engine_id": engineid}).mappings().all()
+            rows = conn.execute(query, {"engine_id": id}).mappings().all()
     except Exception as exc:  # surface a clean 503 instead of a 500 stack trace
         raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
 
     if not rows:
-        raise HTTPException(status_code=404, detail=f"engine {engineid} not found")
+        raise HTTPException(status_code=404, detail=f"engine data {id} not found")
 
     return [dict(row) for row in rows]
