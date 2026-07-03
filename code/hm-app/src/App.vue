@@ -41,14 +41,14 @@ onUnmounted(() => {
 
 <template>
   <div class="app-root">
-    <router-view />
-
-    <footer class="app-footer">
-      <p class="backend-status">Hangar Mind v0.1 — MRO Intelligence Platform — 
+    <header class="app-topbar">
+      <p class="backend-status">
         <span v-if="backendOk">🟢 backend ok</span>
         <span v-else>🔴 backend error - {{ backendError }}</span>
       </p>
-    </footer>
+    </header>
+
+    <router-view />
   </div>
 </template>
 
@@ -60,20 +60,25 @@ onUnmounted(() => {
 }
 
 .app-root > :first-child {
-  flex: 1;
+  flex: 0 1 auto;
 }
 
-.app-footer {
+.app-topbar {
   text-align: center;
-  padding: 24px;
-  border-top: 1px solid var(--border);
-  font-size: 0.82rem;
-  color: var(--text);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--card-bg) 92%, var(--accent-bg));
 }
 
 .backend-status {
-  margin-top: 6px;
-  font-size: 0.78rem;
+  margin: 0;
+  font-size: 0.82rem;
   font-weight: 600;
+  color: var(--text);
+}
+
+.app-root > :last-child {
+  text-align: center;
+  flex: 1;
 }
 </style>
