@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import { API_BASE_URL } from '../config'
 
@@ -84,7 +84,6 @@ interface MetricSeries {
 }
 
 const route = useRoute()
-const router = useRouter()
 
 const loading = ref(false)
 const error = ref('')
@@ -293,23 +292,19 @@ async function loadEngine() {
   }
 }
 
-function backToAircraft() {
-  router.push({ name: 'aircraft-detail', params: { aircraftid: aircraftId.value } })
-}
-
 watch(() => [route.params.aircraftid, route.params.engineid], loadEngine)
 onMounted(loadEngine)
 </script>
 
 <template>
   <div class="engine-detail-page">
-    <PageHeader :title="`Engine ${engineId}`" />
+    <PageHeader
+      :title="`Engine ${engineId}`"
+      :root-label="`Aircraft ${aircraftId}`"
+      :root-to="{ name: 'aircraft-detail', params: { aircraftid: aircraftId } }"
+    />
 
     <section class="content">
-      <button class="back-to-aircraft" @click="backToAircraft">
-        ← Back To Aircraft {{ aircraftId }}
-      </button>
-
       <p v-if="loading" class="state">Loading engine details…</p>
       <p v-else-if="error" class="state state--error">⚠️ {{ error }}</p>
       <p v-else-if="!engine" class="state">Engine not found.</p>
@@ -466,18 +461,6 @@ onMounted(loadEngine)
 
 .content {
   width: 100%;
-}
-
-.back-to-aircraft {
-  margin-bottom: 12px;
-  background: var(--accent-bg);
-  color: var(--accent);
-  border: 1px solid var(--accent-border);
-  border-radius: 8px;
-  padding: 8px 14px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
 }
 
 .panel {

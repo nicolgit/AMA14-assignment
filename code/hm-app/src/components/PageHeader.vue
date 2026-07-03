@@ -1,18 +1,38 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import type { RouteLocationRaw } from 'vue-router'
 
-defineProps<{ title: string }>()
+const props = defineProps<{
+  title: string
+  rootLabel?: string
+  rootTo?: RouteLocationRaw
+}>()
 
 const router = useRouter()
+
+function goBack() {
+  router.back()
+}
 </script>
 
 <template>
   <header class="page-header">
-    <button class="back-btn" @click="router.push({ name: 'home' })">
+    <button class="back-btn" @click="goBack">
       ← Back
     </button>
     <nav class="breadcrumb">
-      <span class="crumb-home">✈️ Hangar Mind</span>
+      <router-link :to="{ name: 'home' }" replace class="crumb-home crumb-link">
+        ✈️ Hangar Mind
+      </router-link>
+
+      <template v-if="props.rootLabel">
+        <span class="sep">›</span>
+        <router-link v-if="props.rootTo" :to="props.rootTo" class="crumb-home crumb-link">
+          {{ props.rootLabel }}
+        </router-link>
+        <span v-else class="crumb-home">{{ props.rootLabel }}</span>
+      </template>
+
       <span class="sep">›</span>
       <span class="crumb-current">{{ title }}</span>
     </nav>
@@ -52,6 +72,15 @@ const router = useRouter()
 
 .crumb-home {
   font-weight: 600;
+}
+
+.crumb-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.crumb-link:hover {
+  text-decoration: underline;
 }
 
 .sep {
