@@ -202,7 +202,14 @@ onMounted(loadAircraft)
                   </thead>
                   <tbody>
                     <tr v-for="eng in engines" :key="eng.engineid">
-                      <td>{{ eng.engineid }}</td>
+                      <td>
+                        <router-link
+                          class="engine-link"
+                          :to="{ name: 'engine-detail', params: { aircraftid: aircraftId, engineid: eng.engineid } }"
+                        >
+                          {{ eng.engineid }}
+                        </router-link>
+                      </td>
                       <td>{{ eng.manifacturer ?? '—' }}</td>
                       <td>{{ eng.engine_serial_number ?? '—' }}</td>
                       <td>{{ eng.position_on_iarcraft ?? '—' }}</td>
@@ -322,6 +329,16 @@ onMounted(loadAircraft)
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text);
+}
+
+.engine-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.engine-link:hover {
+  text-decoration: underline;
 }
 
 .field--full {
