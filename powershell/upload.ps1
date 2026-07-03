@@ -1,16 +1,18 @@
-# Orchestratore: prepara dati e lancia la pipeline ML del PoC.
-#
-#   git clone https://github.com/nicolgit/AMA14-assignment
-#   cd .\AMA14-assignment\powershell
-#   git pull
-#
-# Esegue in sequenza:
-#   1. populate-sql.ps1         -> crea e popola le tabelle su PostgreSQL
-#   2. populate-test-fd004.ps1  -> crea e popola engine_data da CMAPPS-data/test_FD004.txt
-#   3. populate-train-data.ps1  -> carica i dati C-MAPSS + environment su Azure ML
-#   4. start-ml-pipeline.ps1    -> lancia la pipeline train -> evaluate
-#
-# Prerequisiti: az login gia' effettuato; estensioni ml e rdbms-connect.
+<#
+Orchestratore: prepara dati e lancia la pipeline ML del PoC.
+
+  git clone https://github.com/nicolgit/AMA14-assignment
+  cd .\AMA14-assignment\powershell
+  git pull
+
+Esegue in sequenza:
+  1. populate-sql.ps1         -> crea e popola le tabelle su PostgreSQL
+  2. populate-test-fd004.ps1  -> crea e popola engine_data da CMAPPS-data/test_FD004.txt
+  3. populate-train-data.ps1  -> carica i dati C-MAPSS + environment su Azure ML
+  4. start-ml-pipeline.ps1    -> lancia la pipeline train -> evaluate
+
+Prerequisiti: az login gia' effettuato; estensioni ml e rdbms-connect.
+#>
 
 param(
   [string]$RG = 'ama-mro-playground'
