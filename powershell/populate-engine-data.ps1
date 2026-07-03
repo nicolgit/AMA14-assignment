@@ -1,4 +1,4 @@
-# Crea e popola la tabella test_fd004 su PostgreSQL Flexible Server
+# Crea e popola la tabella engine_data su PostgreSQL Flexible Server
 # partendo da CMAPPS-data/test_FD004.txt.
 #
 # Mapping colonne preso da CMAPPS-data/readme.md:

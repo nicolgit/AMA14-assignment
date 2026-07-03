@@ -7,7 +7,7 @@ Orchestratore: prepara dati e lancia la pipeline ML del PoC.
 
 Esegue in sequenza:
   1. populate-sql.ps1         -> crea e popola le tabelle su PostgreSQL
-  2. populate-test-fd004.ps1  -> crea e popola engine_data da CMAPPS-data/test_FD004.txt
+  2. populate-engine-data.ps1 -> crea e popola engine_data da CMAPPS-data/test_FD004.txt
   3. populate-train-data.ps1  -> carica i dati C-MAPSS + environment su Azure ML
   4. start-ml-pipeline.ps1    -> lancia la pipeline train -> evaluate
 
@@ -21,6 +21,6 @@ param(
 $base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
 
 & "$base/populate-sql.ps1" -RG $RG
-& "$base/populate-test-fd004.ps1" -RG $RG
+& "$base/populate-engine-data.ps1" -RG $RG
 & "$base/populate-train-data.ps1" -RG $RG
 & "$base/start-ml-pipeline.ps1" -RG $RG
