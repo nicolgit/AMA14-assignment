@@ -1,12 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import RulView from '../views/RulView.vue'
+import AircraftDetailView from '../views/AircraftDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', name: 'home', component: HomeView },
     { path: '/rul', name: 'rul', component: RulView },
+    {
+      path: '/aircraft/:aircraftid',
+      name: 'aircraft-detail',
+      component: AircraftDetailView,
+      props: true,
+    },
   ],
 })
 

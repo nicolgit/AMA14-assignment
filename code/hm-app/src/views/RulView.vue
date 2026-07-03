@@ -113,7 +113,14 @@ onMounted(loadAircraft)
           </thead>
           <tbody>
             <tr v-for="ac in pagedAircraft" :key="ac.aircraft_id">
-              <td>{{ ac.aircraft_id }}</td>
+              <td>
+                <router-link
+                  class="aircraft-link"
+                  :to="{ name: 'aircraft-detail', params: { aircraftid: ac.aircraft_id } }"
+                >
+                  {{ ac.aircraft_id }}
+                </router-link>
+              </td>
               <td>{{ ac.model }}</td>
               <td>{{ ac.operator }}</td>
               <td>
@@ -226,6 +233,16 @@ onMounted(loadAircraft)
 
 .aircraft-table tbody tr:hover {
   background: var(--accent-bg);
+}
+
+.aircraft-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.aircraft-link:hover {
+  text-decoration: underline;
 }
 
 .pager {
