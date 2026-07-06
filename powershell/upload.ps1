@@ -1,9 +1,10 @@
 <#
 Orchestratore: prepara dati e lancia la pipeline ML del PoC.
 
-  git clone https://github.com/nicolgit/AMA14-assignment
-  cd .\AMA14-assignment\powershell
-  git pull
+git clone https://github.com/nicolgit/AMA14-assignment
+cd .\AMA14-assignment\powershell
+git pull
+.\upload.ps1 
 
 Esegue in sequenza:
   1. populate-sql.ps1         -> crea e popola le tabelle su PostgreSQL

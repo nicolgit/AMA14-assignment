@@ -134,6 +134,7 @@ resource entraAdmin 'Microsoft.DBforPostgreSQL/flexibleServers/administrators@20
   name: entraAdminObjectId
   dependsOn: [
     allowAzure
+    allowAllIps
   ]
   properties: {
     principalType: entraAdminPrincipalType
@@ -178,6 +179,17 @@ resource allowAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@202
   properties: {
     startIpAddress: '0.0.0.0'
     endIpAddress: '0.0.0.0'
+  }
+}
+
+// Open firewall rule: allow all public IPv4 ranges.
+// Keep only for temporary testing and remove for production.
+resource allowAllIps 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = {
+  parent: postgres
+  name: 'AllowAllIps'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '255.255.255.255'
   }
 }
 
