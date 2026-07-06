@@ -442,35 +442,70 @@ onMounted(loadEngine)
           <h3>RUL Evidence</h3>
           <dl class="evidence-grid">
             <div class="field evidence-field">
-              <dt>Risk In Next {{ horizonCycles }} Cycles</dt>
+              <dt class="field-title-with-info">
+                <span>Risk In Next {{ horizonCycles }} Cycles</span>
+                <span
+                  class="info-icon"
+                  title="Estimated probability that this engine reaches the maintenance risk zone within the next 30 cycles, based on predicted RUL and model uncertainty."
+                  aria-label="Info about risk in next cycles"
+                >i</span>
+              </dt>
               <dd :class="urgencyClass">
                 {{ riskProbability !== null ? `${(riskProbability * 100).toFixed(1)}%` : '—' }}
                 <span class="evidence-sub">{{ urgencyBand }} urgency</span>
               </dd>
             </div>
             <div class="field evidence-field">
-              <dt>Conservative RUL (95%)</dt>
+              <dt class="field-title-with-info">
+                <span>Conservative RUL (95%)</span>
+                <span
+                  class="info-icon"
+                  title="A safety-adjusted Remaining Useful Life estimate that subtracts uncertainty from the raw prediction to reduce optimistic decisions."
+                  aria-label="Info about conservative RUL"
+                >i</span>
+              </dt>
               <dd>
                 {{ conservativeRul !== null ? conservativeRul.toFixed(2) : '—' }}
                 <span class="evidence-sub">cycles (RUL - {{ cautionZ }} x RMSE)</span>
               </dd>
             </div>
             <div class="field evidence-field">
-              <dt>Telemetry Coverage</dt>
+              <dt class="field-title-with-info">
+                <span>Telemetry Coverage</span>
+                <span
+                  class="info-icon"
+                  title="How much sensor history was available for this engine and the cycle window used as evidence for trend interpretation."
+                  aria-label="Info about telemetry coverage"
+                >i</span>
+              </dt>
               <dd>
                 {{ telemetryCoverageText }}
                 <span class="evidence-sub">{{ telemetryFreshnessText }}</span>
               </dd>
             </div>
             <div class="field evidence-field">
-              <dt>Model Error Context</dt>
+              <dt class="field-title-with-info">
+                <span>Model Error Context</span>
+                <span
+                  class="info-icon"
+                  title="Global model validation quality. MAE is average absolute error, RMSE emphasizes larger errors and drives the risk and conservative RUL calculations."
+                  aria-label="Info about model error context"
+                >i</span>
+              </dt>
               <dd>
                 MAE {{ modelMae !== null ? modelMae.toFixed(2) : '—' }} | RMSE {{ modelRmse !== null ? modelRmse.toFixed(2) : '—' }}
                 <span class="evidence-sub">Global validation metrics from evaluation table</span>
               </dd>
             </div>
             <div class="field evidence-field evidence-field--wide">
-              <dt>Prediction Source Link</dt>
+              <dt class="field-title-with-info">
+                <span>Prediction Source Link</span>
+                <span
+                  class="info-icon"
+                  title="Traceability check between the current engine page id and the model prediction row used to display RUL evidence."
+                  aria-label="Info about prediction source link"
+                >i</span>
+              </dt>
               <dd>
                 {{ predictionMappingText }}
                 <span class="evidence-sub">Cross-check between route engine id and prediction row</span>
@@ -643,6 +678,27 @@ onMounted(loadEngine)
   letter-spacing: 0.6px;
   color: var(--text);
   margin-bottom: 4px;
+}
+
+.field-title-with-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  opacity: 0.9;
 }
 
 .field dd {
