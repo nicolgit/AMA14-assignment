@@ -41,6 +41,16 @@ interface EngineDataRow {
   sensor_measurement_21: number
 }
 
+interface Prediction {
+  engine_id: number
+  predicted_rul: number
+}
+
+interface EvaluationMetric {
+  name: string
+  value: number
+}
+
 type MetricKey =
   | 'operational_setting_1'
   | 'operational_setting_2'
@@ -89,6 +99,8 @@ const loading = ref(false)
 const error = ref('')
 const engine = ref<Engine | null>(null)
 const engineData = ref<EngineDataRow[]>([])
+const prediction = ref<Prediction | null>(null)
+const evaluations = ref<EvaluationMetric[]>([])
 const hoverIndex = ref<number | null>(null)
 const hoverMetricKey = ref<MetricKey | null>(null)
 
@@ -208,6 +220,76 @@ const hoverX = computed(() => {
   return chartPad + ((hoverCycle.value - minCycle.value) / cycleRange) * (chartWidth - chartPad * 2)
 })
 
+const telemetryCycleCount = computed(() => engineData.value.length)
+
+const telemetryCoverageText = computed(() => {
+  if (telemetryCycleCount.value === 0) return 'No telemetry evidence available'
+  return `Cycles ${minCycle.value} to ${maxCycle.value} (${telemetryCycleCount.value} points)`
+})
+
+const telemetryFreshnessText = computed(() => {
+  if (telemetryCycleCount.value === 0) return 'Unknown'
+  return `Latest observed cycle: ${maxCycle.value}`
+})
+
+const modelMae = computed(() => {
+  const row = evaluations.value.find((e) => e.name.toLowerCase() === 'mae')
+  return row?.value ?? null
+})
+
+const modelRmse = computed(() => {
+  const row = evaluations.value.find((e) => e.name.toLowerCase() === 'rmse')
+  return row?.value ?? null
+})
+
+const cautionZ = 1.65
+const horizonCycles = 30
+
+function normalCdf(x: number): number {
+  const sign = x < 0 ? -1 : 1
+  const abs = Math.abs(x) / Math.sqrt(2)
+  const t = 1 / (1 + 0.3275911 * abs)
+  const a1 = 0.254829592
+  const a2 = -0.284496736
+  const a3 = 1.421413741
+  const a4 = -1.453152027
+  const a5 = 1.061405429
+  const erfApprox = 1 - (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t) * Math.exp(-abs * abs)
+  return 0.5 * (1 + sign * erfApprox)
+}
+
+const conservativeRul = computed(() => {
+  if (!prediction.value || modelRmse.value === null) return null
+  return prediction.value.predicted_rul - cautionZ * modelRmse.value
+})
+
+const riskProbability = computed(() => {
+  if (!prediction.value || modelMae.value === null || modelRmse.value === null || modelRmse.value <= 0) return null
+  const z = (horizonCycles + modelMae.value - prediction.value.predicted_rul) / modelRmse.value
+  return normalCdf(z)
+})
+
+const urgencyBand = computed<'High' | 'Medium' | 'Low' | 'Unknown'>(() => {
+  if (riskProbability.value === null) return 'Unknown'
+  if (riskProbability.value >= 0.6) return 'High'
+  if (riskProbability.value >= 0.3) return 'Medium'
+  return 'Low'
+})
+
+const urgencyClass = computed(() => {
+  if (urgencyBand.value === 'High') return 'evidence-value--high'
+  if (urgencyBand.value === 'Medium') return 'evidence-value--medium'
+  if (urgencyBand.value === 'Low') return 'evidence-value--low'
+  return ''
+})
+
+const predictionMappingText = computed(() => {
+  if (!prediction.value) return 'No prediction row'
+  if (Number.isNaN(engineDataId.value)) return `Model unit ${prediction.value.engine_id}`
+  const status = prediction.value.engine_id === engineDataId.value ? 'matched' : 'mismatch'
+  return `Model unit ${prediction.value.engine_id} (${status} to page id ${engineDataId.value})`
+})
+
 function nearestIndexForClientX(clientX: number, svg: SVGSVGElement): number | null {
   if (engineData.value.length === 0) return null
   const rect = svg.getBoundingClientRect()
@@ -260,6 +342,8 @@ async function loadEngine() {
   error.value = ''
   engine.value = null
   engineData.value = []
+  prediction.value = null
+  evaluations.value = []
 
   try {
     const res = await fetch(`${API_BASE_URL}/v1/engine/${encodeURIComponent(engineId.value)}`)
@@ -274,6 +358,24 @@ async function loadEngine() {
       throw new Error(detail)
     }
     engine.value = await res.json()
+
+    try {
+      const predRes = await fetch(`${API_BASE_URL}/v1/predictions/${encodeURIComponent(engineId.value)}`)
+      if (predRes.ok) {
+        prediction.value = await predRes.json()
+      }
+    } catch {
+      /* best effort: engine registry is still useful without a prediction */
+    }
+
+    try {
+      const evalRes = await fetch(`${API_BASE_URL}/v1/evaluations`)
+      if (evalRes.ok) {
+        evaluations.value = await evalRes.json()
+      }
+    } catch {
+      /* best effort: keep page usable even if model metrics are unavailable */
+    }
 
     if (!Number.isNaN(engineDataId.value)) {
       try {
@@ -328,6 +430,51 @@ onMounted(loadEngine)
             <div class="field">
               <dt>Installation Date</dt>
               <dd>{{ engine.installation_date ?? '—' }}</dd>
+            </div>
+            <div class="field">
+              <dt>Predicted RUL (cycles)</dt>
+              <dd>{{ prediction ? prediction.predicted_rul.toFixed(2) : '—' }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="panel rul-evidence-panel">
+          <h3>RUL Evidence</h3>
+          <dl class="evidence-grid">
+            <div class="field evidence-field">
+              <dt>Risk In Next {{ horizonCycles }} Cycles</dt>
+              <dd :class="urgencyClass">
+                {{ riskProbability !== null ? `${(riskProbability * 100).toFixed(1)}%` : '—' }}
+                <span class="evidence-sub">{{ urgencyBand }} urgency</span>
+              </dd>
+            </div>
+            <div class="field evidence-field">
+              <dt>Conservative RUL (95%)</dt>
+              <dd>
+                {{ conservativeRul !== null ? conservativeRul.toFixed(2) : '—' }}
+                <span class="evidence-sub">cycles (RUL - {{ cautionZ }} x RMSE)</span>
+              </dd>
+            </div>
+            <div class="field evidence-field">
+              <dt>Telemetry Coverage</dt>
+              <dd>
+                {{ telemetryCoverageText }}
+                <span class="evidence-sub">{{ telemetryFreshnessText }}</span>
+              </dd>
+            </div>
+            <div class="field evidence-field">
+              <dt>Model Error Context</dt>
+              <dd>
+                MAE {{ modelMae !== null ? modelMae.toFixed(2) : '—' }} | RMSE {{ modelRmse !== null ? modelRmse.toFixed(2) : '—' }}
+                <span class="evidence-sub">Global validation metrics from evaluation table</span>
+              </dd>
+            </div>
+            <div class="field evidence-field evidence-field--wide">
+              <dt>Prediction Source Link</dt>
+              <dd>
+                {{ predictionMappingText }}
+                <span class="evidence-sub">Cross-check between route engine id and prediction row</span>
+              </dd>
             </div>
           </dl>
         </div>
@@ -514,6 +661,61 @@ onMounted(loadEngine)
   font-weight: 600;
 }
 
+.rul-evidence-panel {
+  background: #2f343b;
+  border-color: #4b5563;
+}
+
+.rul-evidence-panel h3 {
+  color: #fff;
+}
+
+.rul-evidence-panel .field {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.rul-evidence-panel .field dt,
+.rul-evidence-panel .field dd,
+.rul-evidence-panel .evidence-sub {
+  color: #fff;
+}
+
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.evidence-field dd {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.evidence-sub {
+  font-size: 0.76rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.evidence-field--wide {
+  grid-column: 1 / -1;
+}
+
+.evidence-value--high {
+  color: #b42318;
+}
+
+.evidence-value--medium {
+  color: #b54708;
+}
+
+.evidence-value--low {
+  color: #067647;
+}
+
 .metric-groups {
   display: flex;
   flex-direction: column;
@@ -659,6 +861,10 @@ onMounted(loadEngine)
   }
 
   .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-grid {
     grid-template-columns: 1fr;
   }
 
