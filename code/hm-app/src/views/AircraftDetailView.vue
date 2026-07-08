@@ -33,6 +33,18 @@ interface Engine {
   installation_date: string | null
 }
 
+interface Prediction {
+  engine_id: number
+  predicted_rul: number
+}
+
+interface EvaluationMetric {
+  name: string
+  value: number
+}
+
+type BadgeStatus = 'red' | 'yellow' | 'green'
+
 const route = useRoute()
 
 const loading = ref(false)
@@ -40,6 +52,11 @@ const error = ref('')
 const aircraft = ref<Aircraft | null>(null)
 const location = ref<Location | null>(null)
 const engines = ref<Engine[]>([])
+const engineUrgencyByTag = ref<Record<string, number>>({})
+
+const DEFAULT_HORIZON_CYCLES = 30
+const YELLOW_FROM = 0.3
+const RED_FROM = 0.6
 
 const aircraftId = computed(() => String(route.params.aircraftid ?? ''))
 
@@ -56,6 +73,37 @@ const baseLocationDisplay = computed(() => {
   return aircraft.value?.base_location ?? '—'
 })
 
+function normalCdf(x: number): number {
+  const sign = x < 0 ? -1 : 1
+  const abs = Math.abs(x) / Math.sqrt(2)
+  const t = 1 / (1 + 0.3275911 * abs)
+  const a1 = 0.254829592
+  const a2 = -0.284496736
+  const a3 = 1.421413741
+  const a4 = -1.453152027
+  const a5 = 1.061405429
+  const erfApprox = 1 - (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t) * Math.exp(-abs * abs)
+  return 0.5 * (1 + sign * erfApprox)
+}
+
+function classifyUrgencyLevel(predictedRul: number, mae: number, rmse: number): number {
+  const z = (DEFAULT_HORIZON_CYCLES + mae - predictedRul) / rmse
+  const pRisk = normalCdf(z)
+  if (pRisk >= RED_FROM) return 3
+  if (pRisk >= YELLOW_FROM) return 2
+  return 1
+}
+
+function statusForUrgencyLevel(level?: number): BadgeStatus {
+  if (level === 3) return 'red'
+  if (level === 2) return 'yellow'
+  return 'green'
+}
+
+function engineBadgeStatus(engineTag: string): BadgeStatus {
+  return statusForUrgencyLevel(engineUrgencyByTag.value[engineTag])
+}
+
 async function loadAircraft() {
   if (!aircraftId.value) {
     error.value = 'Missing aircraft id.'
@@ -67,6 +115,7 @@ async function loadAircraft() {
   aircraft.value = null
   location.value = null
   engines.value = []
+  engineUrgencyByTag.value = {}
 
   try {
     const res = await fetch(`${API_BASE_URL}/v1/aircraft/${encodeURIComponent(aircraftId.value)}`)
@@ -99,6 +148,42 @@ async function loadAircraft() {
       .filter(Boolean)
 
     if (ids.length > 0) {
+      let mae: number | null = null
+      let rmse: number | null = null
+
+      try {
+        const evalRes = await fetch(`${API_BASE_URL}/v1/evaluations`)
+        if (evalRes.ok) {
+          const metrics = (await evalRes.json()) as EvaluationMetric[]
+          const maeRow = metrics.find((m) => m.name.toLowerCase() === 'mae')
+          const rmseRow = metrics.find((m) => m.name.toLowerCase() === 'rmse')
+          mae = maeRow?.value ?? null
+          rmse = rmseRow?.value ?? null
+        }
+      } catch {
+        /* best effort: badges fall back to green if metrics are unavailable */
+      }
+
+      if (mae !== null && rmse !== null && rmse > 0) {
+        const urgencyEntries = await Promise.all(
+          ids.map(async (id) => {
+            try {
+              const r = await fetch(`${API_BASE_URL}/v1/predictions/${encodeURIComponent(id)}`)
+              if (!r.ok) return null
+              const prediction = (await r.json()) as Prediction
+              const level = classifyUrgencyLevel(prediction.predicted_rul, mae as number, rmse as number)
+              return [id, level] as const
+            } catch {
+              return null
+            }
+          }),
+        )
+
+        engineUrgencyByTag.value = Object.fromEntries(
+          urgencyEntries.filter((entry): entry is readonly [string, number] => entry !== null),
+        )
+      }
+
       const responses = await Promise.all(
         ids.map(async (id) => {
           try {
@@ -180,7 +265,7 @@ onMounted(loadAircraft)
                     v-for="eng in engineTags"
                     :key="eng"
                     :label="eng"
-                    status="green"
+                    :status="engineBadgeStatus(eng)"
                   />
                 </template>
                 <span v-else>—</span>
