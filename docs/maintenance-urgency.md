@@ -99,6 +99,22 @@ $$
 
 Dunque la CDF trasforma il punteggio normalizzato $z$ in una probabilita di rischio direttamente interpretabile (da 0 a 1).
 
+### 5) Scelta implementativa nel backend
+
+Nel codice Python dell'API la CDF e implementata con la funzione errore della libreria standard (`math.erf`):
+
+$$
+\Phi(z)=\frac{1}{2}\left(1+\operatorname{erf}\left(\frac{z}{\sqrt{2}}\right)\right)
+$$
+
+Motivazione pratica per questo progetto:
+
+- dipendenze minime (non richiede SciPy), quindi immagine container piu leggera e manutenzione semplificata
+- accuratezza adeguata per una decisione a soglie (0.30 / 0.60)
+- migliore portabilita operativa in ambienti enterprise con pipeline DevSecOps
+
+In futuro, una libreria scientifica puo essere valutata se serviranno analisi numeriche piu avanzate o workload batch ad altissimo volume.
+
 ## Regole decisionali a tre livelli
 
 Soglie proposte iniziali:
@@ -133,11 +149,11 @@ z = (horizon_cycles - mu_c) / rmse
 p_risk = normal_cdf(z)
 
 if p_risk >= 0.60:
-    level = "red"
+  level = 3
 elif p_risk >= 0.30:
-    level = "yellow"
+  level = 2
 else:
-    level = "green"
+  level = 1
 
 return level, p_risk
 ```
@@ -169,7 +185,7 @@ Response:
 
 ```json
 {
-  "level": "red",
+  "level": 3,
   "risk_probability": 0.72,
   "explanation": "Rischio alto: pianificare intervento di manutenzione preventiva.",
   "inputs": {
@@ -187,6 +203,12 @@ Response:
 
 Nota: in implementazione `risk_probability` viene arrotondato a 6 decimali.
 
+Mappatura del campo `level`:
+
+- `1` = low (verde)
+- `2` = medium (giallo)
+- `3` = high (rosso)
+
 ### 2) GET /v1/maintenance/urgency/engines
 
 Query parameter:
@@ -200,21 +222,21 @@ Response esempio:
   {
     "engine_id": 1,
     "predicted_rul": 18.4,
-    "level": "red",
+    "level": 3,
     "risk_probability": 0.834512,
     "explanation": "Rischio alto: pianificare intervento di manutenzione preventiva."
   },
   {
     "engine_id": 2,
     "predicted_rul": 36.9,
-    "level": "yellow",
+    "level": 2,
     "risk_probability": 0.451203,
     "explanation": "Rischio intermedio: vicini alla soglia, aumentare monitoraggio."
   },
   {
     "engine_id": 3,
     "predicted_rul": 79.2,
-    "level": "green",
+    "level": 1,
     "risk_probability": 0.083114,
     "explanation": "Rischio basso: non e necessario intervenire ora."
   }

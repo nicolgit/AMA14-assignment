@@ -51,6 +51,22 @@ interface EvaluationMetric {
   value: number
 }
 
+interface MaintenanceUrgency {
+  level: number
+  risk_probability: number
+  explanation: string
+  inputs: {
+    rul: number
+    horizon_cycles: number
+    mae: number
+    rmse: number
+  }
+  thresholds: {
+    yellow_from: number
+    red_from: number
+  }
+}
+
 type MetricKey =
   | 'operational_setting_1'
   | 'operational_setting_2'
@@ -100,6 +116,7 @@ const error = ref('')
 const engine = ref<Engine | null>(null)
 const engineData = ref<EngineDataRow[]>([])
 const prediction = ref<Prediction | null>(null)
+const maintenanceUrgency = ref<MaintenanceUrgency | null>(null)
 const evaluations = ref<EvaluationMetric[]>([])
 const hoverIndex = ref<number | null>(null)
 const hoverMetricKey = ref<MetricKey | null>(null)
@@ -245,42 +262,32 @@ const modelRmse = computed(() => {
 const cautionZ = 1.65
 const horizonCycles = 30
 
-function normalCdf(x: number): number {
-  const sign = x < 0 ? -1 : 1
-  const abs = Math.abs(x) / Math.sqrt(2)
-  const t = 1 / (1 + 0.3275911 * abs)
-  const a1 = 0.254829592
-  const a2 = -0.284496736
-  const a3 = 1.421413741
-  const a4 = -1.453152027
-  const a5 = 1.061405429
-  const erfApprox = 1 - (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t) * Math.exp(-abs * abs)
-  return 0.5 * (1 + sign * erfApprox)
-}
-
 const conservativeRul = computed(() => {
   if (!prediction.value || modelRmse.value === null) return null
   return prediction.value.predicted_rul - cautionZ * modelRmse.value
 })
 
-const riskProbability = computed(() => {
-  if (!prediction.value || modelMae.value === null || modelRmse.value === null || modelRmse.value <= 0) return null
-  const z = (horizonCycles + modelMae.value - prediction.value.predicted_rul) / modelRmse.value
-  return normalCdf(z)
-})
+const riskProbability = computed(() => maintenanceUrgency.value?.risk_probability ?? null)
 
 const urgencyBand = computed<'High' | 'Medium' | 'Low' | 'Unknown'>(() => {
-  if (riskProbability.value === null) return 'Unknown'
-  if (riskProbability.value >= 0.6) return 'High'
-  if (riskProbability.value >= 0.3) return 'Medium'
-  return 'Low'
+  if (!maintenanceUrgency.value) return 'Unknown'
+  if (maintenanceUrgency.value.level === 3) return 'High'
+  if (maintenanceUrgency.value.level === 2) return 'Medium'
+  if (maintenanceUrgency.value.level === 1) return 'Low'
+  return 'Unknown'
 })
 
 const urgencyClass = computed(() => {
-  if (urgencyBand.value === 'High') return 'evidence-value--high'
-  if (urgencyBand.value === 'Medium') return 'evidence-value--medium'
-  if (urgencyBand.value === 'Low') return 'evidence-value--low'
+  if (!maintenanceUrgency.value) return ''
+  if (maintenanceUrgency.value.level === 3) return 'evidence-value--high'
+  if (maintenanceUrgency.value.level === 2) return 'evidence-value--medium'
+  if (maintenanceUrgency.value.level === 1) return 'evidence-value--low'
   return ''
+})
+
+const urgencyLevelText = computed(() => {
+  if (!maintenanceUrgency.value) return '—'
+  return `Level ${maintenanceUrgency.value.level}`
 })
 
 const predictionMappingText = computed(() => {
@@ -332,6 +339,32 @@ function hoverY(series: MetricSeries): number | null {
   return chartHeight - chartPad - ((value - series.plotMin) / valueRange) * (chartHeight - chartPad * 2)
 }
 
+async function loadMaintenanceUrgency() {
+  if (!prediction.value) {
+    maintenanceUrgency.value = null
+    return
+  }
+
+  try {
+    const urgencyRes = await fetch(`${API_BASE_URL}/v1/maintenance/urgency`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rul: prediction.value.predicted_rul,
+        horizon_cycles: horizonCycles,
+      }),
+    })
+    if (urgencyRes.ok) {
+      maintenanceUrgency.value = await urgencyRes.json()
+      return
+    }
+  } catch {
+    /* best effort: keep view usable even if urgency API is unavailable */
+  }
+
+  maintenanceUrgency.value = null
+}
+
 async function loadEngine() {
   if (!engineId.value) {
     error.value = 'Missing engine id.'
@@ -343,6 +376,7 @@ async function loadEngine() {
   engine.value = null
   engineData.value = []
   prediction.value = null
+  maintenanceUrgency.value = null
   evaluations.value = []
 
   try {
@@ -363,6 +397,7 @@ async function loadEngine() {
       const predRes = await fetch(`${API_BASE_URL}/v1/predictions/${encodeURIComponent(engineId.value)}`)
       if (predRes.ok) {
         prediction.value = await predRes.json()
+        await loadMaintenanceUrgency()
       }
     } catch {
       /* best effort: engine registry is still useful without a prediction */
@@ -452,7 +487,7 @@ onMounted(loadEngine)
               </dt>
               <dd :class="urgencyClass">
                 {{ riskProbability !== null ? `${(riskProbability * 100).toFixed(1)}%` : '—' }}
-                <span class="evidence-sub">{{ urgencyBand }} urgency</span>
+                <span class="evidence-sub">{{ urgencyBand }} urgency · {{ urgencyLevelText }}</span>
               </dd>
             </div>
             <div class="field evidence-field">
@@ -750,6 +785,14 @@ onMounted(loadEngine)
   gap: 4px;
 }
 
+.evidence-field dd.evidence-value--high,
+.evidence-field dd.evidence-value--medium,
+.evidence-field dd.evidence-value--low {
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
 .evidence-sub {
   font-size: 0.76rem;
   color: var(--text);
@@ -760,16 +803,16 @@ onMounted(loadEngine)
   grid-column: 1 / -1;
 }
 
-.evidence-value--high {
-  color: #b42318;
+.rul-evidence-panel .field dd.evidence-value--high {
+  background: #7a1f1f;
 }
 
-.evidence-value--medium {
-  color: #b54708;
+.rul-evidence-panel .field dd.evidence-value--medium {
+  background: #7a5a12;
 }
 
-.evidence-value--low {
-  color: #067647;
+.rul-evidence-panel .field dd.evidence-value--low {
+  background: #1f5f3f;
 }
 
 .metric-groups {

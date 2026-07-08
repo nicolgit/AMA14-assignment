@@ -23,7 +23,7 @@ class MaintenanceUrgencyRequest(BaseModel):
 
 
 class MaintenanceUrgencyResponse(BaseModel):
-    level: str
+    level: int
     risk_probability: float
     explanation: str
     inputs: dict
@@ -33,7 +33,7 @@ class MaintenanceUrgencyResponse(BaseModel):
 class EngineMaintenanceUrgencyResponse(BaseModel):
     engine_id: int
     predicted_rul: float
-    level: str
+    level: int
     risk_probability: float
     explanation: str
 
@@ -42,18 +42,18 @@ def _normal_cdf(z: float) -> float:
     return 0.5 * (1.0 + erf(z / sqrt(2.0)))
 
 
-def _classify_urgency(rul: float, horizon_cycles: float, mae: float, rmse: float) -> tuple[str, float, str]:
+def _classify_urgency(rul: float, horizon_cycles: float, mae: float, rmse: float) -> tuple[int, float, str]:
     z = (horizon_cycles + mae - rul) / rmse
     p_risk = _normal_cdf(z)
 
     if p_risk >= RED_FROM:
-        level = "red"
+        level = 3
         explanation = "Rischio alto: pianificare intervento di manutenzione preventiva."
     elif p_risk >= YELLOW_FROM:
-        level = "yellow"
+        level = 2
         explanation = "Rischio intermedio: vicini alla soglia, aumentare monitoraggio."
     else:
-        level = "green"
+        level = 1
         explanation = "Rischio basso: non e necessario intervenire ora."
 
     return level, p_risk, explanation
