@@ -60,12 +60,6 @@ const RED_FROM = 0.6
 
 const aircraftId = computed(() => String(route.params.aircraftid ?? ''))
 
-const engineTags = computed(() =>
-  (aircraft.value?.engine_ids?.split(';') ?? [])
-    .map((id) => id.trim())
-    .filter(Boolean),
-)
-
 const baseLocationDisplay = computed(() => {
   if (location.value) {
     return `${location.value.location_code} - ${location.value.location_name} - ${location.value.place}`
@@ -258,21 +252,6 @@ onMounted(loadAircraft)
               <dd>{{ baseLocationDisplay }}</dd>
             </div>
             <div class="field field--full">
-              <dt>Engine IDs</dt>
-              <dd>
-                <template v-if="engineTags.length > 0">
-                  <StatusBadge
-                    v-for="eng in engineTags"
-                    :key="eng"
-                    :label="eng"
-                    :status="engineBadgeStatus(eng)"
-                  />
-                </template>
-                <span v-else>—</span>
-              </dd>
-            </div>
-
-            <div class="field field--full">
               <dt>Engine Details</dt>
               <dd>
                 <table v-if="engines.length > 0" class="engine-table">
@@ -288,12 +267,18 @@ onMounted(loadAircraft)
                   <tbody>
                     <tr v-for="eng in engines" :key="eng.engineid">
                       <td>
-                        <router-link
-                          class="engine-link"
-                          :to="{ name: 'engine-detail', params: { aircraftid: aircraftId, engineid: eng.engineid } }"
-                        >
-                          {{ eng.engineid }}
-                        </router-link>
+                        <div class="engine-id-cell">
+                          <StatusBadge
+                            :label="''"
+                            :status="engineBadgeStatus(eng.engineid)"
+                          />
+                          <router-link
+                            class="engine-link"
+                            :to="{ name: 'engine-detail', params: { aircraftid: aircraftId, engineid: eng.engineid } }"
+                          >
+                            {{ eng.engineid }}
+                          </router-link>
+                        </div>
                       </td>
                       <td>{{ eng.manifacturer ?? '—' }}</td>
                       <td>{{ eng.engine_serial_number ?? '—' }}</td>
@@ -424,6 +409,12 @@ onMounted(loadAircraft)
 
 .engine-link:hover {
   text-decoration: underline;
+}
+
+.engine-id-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .field--full {
