@@ -94,6 +94,10 @@ function engineBadgeStatus(engineTag: string): BadgeStatus {
   return badgeStatusFromLevel(urgencyByEngineId.value[normalized])
 }
 
+function parseEngineIds(engineIds: string | null): string[] {
+  return (engineIds?.split(';') ?? []).map((id) => id.trim()).filter(Boolean)
+}
+
 async function loadAircraft() {
   loading.value = true
   error.value = ''
@@ -187,12 +191,17 @@ onMounted(loadAircraft)
               <td>{{ ac.model }}</td>
               <td>{{ ac.operator }}</td>
               <td>
-                <StatusBadge
-                  v-for="eng in (ac.engine_ids?.split(';') ?? [])"
+                <router-link
+                  v-for="eng in parseEngineIds(ac.engine_ids)"
                   :key="eng"
-                  :label="eng.trim()"
-                  :status="engineBadgeStatus(eng)"
-                />
+                  class="engine-badge-link"
+                  :to="{ name: 'engine-detail', params: { aircraftid: ac.aircraft_id, engineid: eng } }"
+                >
+                  <StatusBadge
+                    :label="eng"
+                    :status="engineBadgeStatus(eng)"
+                  />
+                </router-link>
               </td>
               <td>{{ ac.status }}</td>
               <td>{{ ac.total_flight_cycles }}</td>
@@ -306,6 +315,16 @@ onMounted(loadAircraft)
 
 .aircraft-link:hover {
   text-decoration: underline;
+}
+
+.engine-badge-link {
+  text-decoration: none;
+  margin-right: 8px;
+}
+
+.engine-badge-link:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
 }
 
 .pager {
