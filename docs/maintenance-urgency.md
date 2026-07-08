@@ -142,11 +142,19 @@ else:
 return level, p_risk
 ```
 
-## Contratto API proposto (bozza)
+## Contratto API implementato
 
-Endpoint candidato:
+Endpoint disponibili:
 
 - `POST /v1/maintenance/urgency`
+- `GET /v1/maintenance/urgency/engines`
+
+### 1) POST /v1/maintenance/urgency
+
+Validazioni input implementate:
+
+- `rul >= 0`
+- `horizon_cycles > 0` (default `30`)
 
 Request:
 
@@ -163,7 +171,7 @@ Response:
 {
   "level": "red",
   "risk_probability": 0.72,
-  "explanation": "Rischio alto di superare la soglia entro l'orizzonte operativo.",
+  "explanation": "Rischio alto: pianificare intervento di manutenzione preventiva.",
   "inputs": {
     "rul": 42.0,
     "horizon_cycles": 30,
@@ -175,6 +183,42 @@ Response:
     "red_from": 0.60
   }
 }
+```
+
+Nota: in implementazione `risk_probability` viene arrotondato a 6 decimali.
+
+### 2) GET /v1/maintenance/urgency/engines
+
+Query parameter:
+
+- `horizon_cycles` opzionale, default `30`, deve essere `> 0`
+
+Response esempio:
+
+```json
+[
+  {
+    "engine_id": 1,
+    "predicted_rul": 18.4,
+    "level": "red",
+    "risk_probability": 0.834512,
+    "explanation": "Rischio alto: pianificare intervento di manutenzione preventiva."
+  },
+  {
+    "engine_id": 2,
+    "predicted_rul": 36.9,
+    "level": "yellow",
+    "risk_probability": 0.451203,
+    "explanation": "Rischio intermedio: vicini alla soglia, aumentare monitoraggio."
+  },
+  {
+    "engine_id": 3,
+    "predicted_rul": 79.2,
+    "level": "green",
+    "risk_probability": 0.083114,
+    "explanation": "Rischio basso: non e necessario intervenire ora."
+  }
+]
 ```
 
 ## Parametri da governare
