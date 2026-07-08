@@ -519,7 +519,7 @@ onMounted(loadEngine)
           <p v-if="engineData.length === 0" class="state">No engine telemetry rows available for this id.</p>
           <div v-else class="metric-groups" @mouseleave="clearHover">
             <section class="metric-group metric-group--op">
-              <h4 class="group-title">OP</h4>
+              <h4 class="group-title">Operational Settings</h4>
               <div class="metric-list">
                 <div
                   v-for="series in opSeries"

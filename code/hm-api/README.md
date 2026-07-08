@@ -32,9 +32,10 @@ pip install -r requirements.txt
 
 # Start with hot-reload - DEVELOPMENT
 $env:CORS_ORIGINS = "http://localhost:5173"
-$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0706.postgres.database.azure.com:5432/hangarmind"
+$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0708.postgres.database.azure.com:5432/hangarmind"
 
 uvicorn app.main:app --reload --port 8080
+
 ```
 
 API available at: `http://localhost:8080`  
