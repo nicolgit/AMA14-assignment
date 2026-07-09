@@ -129,9 +129,8 @@ CREATE TABLE IF NOT EXISTS location_distance (
 -- ricarica pulita (idempotente)
 TRUNCATE TABLE aircraft;
 TRUNCATE TABLE engine;
-TRUNCATE TABLE spare_part_location;
 TRUNCATE TABLE location_distance;
-TRUNCATE TABLE spare_part;
+TRUNCATE TABLE spare_part_location, spare_part;
 TRUNCATE TABLE location CASCADE;
 TRUNCATE TABLE status   CASCADE;
 TRUNCATE TABLE prediction;
