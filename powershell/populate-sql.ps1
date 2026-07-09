@@ -57,7 +57,18 @@ $sb = New-Object System.Text.StringBuilder
 
 # --- DDL ---
 [void]$sb.AppendLine(@'
-CREATE TABLE IF NOT EXISTS location (
+-- reset completo: elimina sempre le tabelle esistenti
+DROP TABLE IF EXISTS spare_part_location CASCADE;
+DROP TABLE IF EXISTS location_distance CASCADE;
+DROP TABLE IF EXISTS aircraft CASCADE;
+DROP TABLE IF EXISTS engine CASCADE;
+DROP TABLE IF EXISTS prediction CASCADE;
+DROP TABLE IF EXISTS evaluation CASCADE;
+DROP TABLE IF EXISTS spare_part CASCADE;
+DROP TABLE IF EXISTS status CASCADE;
+DROP TABLE IF EXISTS location CASCADE;
+
+CREATE TABLE location (
   location_code text PRIMARY KEY,
   location_name text NOT NULL,
   place         text NOT NULL,
@@ -65,13 +76,13 @@ CREATE TABLE IF NOT EXISTS location (
   longitude     double precision
 );
 
-CREATE TABLE IF NOT EXISTS status (
+CREATE TABLE status (
   status_code text PRIMARY KEY,
   status_name text NOT NULL,
   description text
 );
 
-CREATE TABLE IF NOT EXISTS aircraft (
+CREATE TABLE aircraft (
   aircraft_id         text PRIMARY KEY,
   model               text,
   engine_count        int,
@@ -85,7 +96,7 @@ CREATE TABLE IF NOT EXISTS aircraft (
   base_location       text REFERENCES location(location_code)
 );
 
-CREATE TABLE IF NOT EXISTS engine (
+CREATE TABLE engine (
   engineid              text PRIMARY KEY,
   manifacturer          text,
   engine_serial_number  text,
@@ -93,22 +104,22 @@ CREATE TABLE IF NOT EXISTS engine (
   installation_date     date
 );
 
-CREATE TABLE IF NOT EXISTS prediction (
+CREATE TABLE prediction (
   engine_id     int PRIMARY KEY,
   predicted_rul real
 );
 
-CREATE TABLE IF NOT EXISTS evaluation (
+CREATE TABLE evaluation (
   name  text PRIMARY KEY,
   value real
 );
 
-CREATE TABLE IF NOT EXISTS spare_part (
+CREATE TABLE spare_part (
   part_number text PRIMARY KEY,
   name        text NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS spare_part_location (
+CREATE TABLE spare_part_location (
   part_number text REFERENCES spare_part(part_number),
   location    text REFERENCES location(location_code),
   on_hand     int,
@@ -117,7 +128,7 @@ CREATE TABLE IF NOT EXISTS spare_part_location (
   PRIMARY KEY (part_number, location)
 );
 
-CREATE TABLE IF NOT EXISTS location_distance (
+CREATE TABLE location_distance (
   location_1    text REFERENCES location(location_code),
   location_2    text REFERENCES location(location_code),
   distance      real,
@@ -125,16 +136,6 @@ CREATE TABLE IF NOT EXISTS location_distance (
   transfer_cost real,
   PRIMARY KEY (location_1, location_2)
 );
-
--- ricarica pulita (idempotente)
-TRUNCATE TABLE aircraft;
-TRUNCATE TABLE engine;
-TRUNCATE TABLE location_distance;
-TRUNCATE TABLE spare_part_location, spare_part;
-TRUNCATE TABLE location CASCADE;
-TRUNCATE TABLE status   CASCADE;
-TRUNCATE TABLE prediction;
-TRUNCATE TABLE evaluation;
 '@)
 
 # --- location ---
