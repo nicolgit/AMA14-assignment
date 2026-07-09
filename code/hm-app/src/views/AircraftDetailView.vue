@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
-import StatusBadge from '../components/StatusBadge.vue'
+import EngineListTable from '../components/EngineListTable.vue'
 import { API_BASE_URL } from '../config'
 
 interface Aircraft {
@@ -42,8 +42,6 @@ interface EvaluationMetric {
   name: string
   value: number
 }
-
-type BadgeStatus = 'red' | 'yellow' | 'green'
 
 const route = useRoute()
 
@@ -86,16 +84,6 @@ function classifyUrgencyLevel(predictedRul: number, mae: number, rmse: number): 
   if (pRisk >= RED_FROM) return 3
   if (pRisk >= YELLOW_FROM) return 2
   return 1
-}
-
-function statusForUrgencyLevel(level?: number): BadgeStatus {
-  if (level === 3) return 'red'
-  if (level === 2) return 'yellow'
-  return 'green'
-}
-
-function engineBadgeStatus(engineTag: string): BadgeStatus {
-  return statusForUrgencyLevel(engineUrgencyByTag.value[engineTag])
 }
 
 async function loadAircraft() {
@@ -254,40 +242,11 @@ onMounted(loadAircraft)
             <div class="field field--full">
               <dt>Engine Details</dt>
               <dd>
-                <table v-if="engines.length > 0" class="engine-table">
-                  <thead>
-                    <tr>
-                      <th>Engine ID</th>
-                      <th>Manufacturer</th>
-                      <th>Serial Number</th>
-                      <th>Position</th>
-                      <th>Installation Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="eng in engines" :key="eng.engineid">
-                      <td>
-                        <div class="engine-id-cell">
-                          <StatusBadge
-                            :label="''"
-                            :status="engineBadgeStatus(eng.engineid)"
-                          />
-                          <router-link
-                            class="engine-link"
-                            :to="{ name: 'engine-detail', params: { aircraftid: aircraftId, engineid: eng.engineid } }"
-                          >
-                            {{ eng.engineid }}
-                          </router-link>
-                        </div>
-                      </td>
-                      <td>{{ eng.manifacturer ?? '—' }}</td>
-                      <td>{{ eng.engine_serial_number ?? '—' }}</td>
-                      <td>{{ eng.position_on_iarcraft ?? '—' }}</td>
-                      <td>{{ eng.installation_date ?? '—' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-                <span v-else>—</span>
+                <EngineListTable
+                  :engines="engines"
+                  :aircraft-id="aircraftId"
+                  :urgency-by-engine-id="engineUrgencyByTag"
+                />
               </dd>
             </div>
           </dl>
@@ -379,42 +338,6 @@ onMounted(loadAircraft)
   margin: 0;
   color: var(--text-h);
   font-weight: 600;
-}
-
-.engine-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.86rem;
-}
-
-.engine-table th,
-.engine-table td {
-  text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-}
-
-.engine-table th {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text);
-}
-
-.engine-link {
-  color: var(--accent);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.engine-link:hover {
-  text-decoration: underline;
-}
-
-.engine-id-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .field--full {

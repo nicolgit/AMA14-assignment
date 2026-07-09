@@ -6,6 +6,25 @@ from app.db import get_engine
 router = APIRouter()
 
 
+@router.get("/locations")
+def list_locations():
+    """Return all locations from the ``location`` table."""
+    query = text(
+        """
+        SELECT location_code, location_name, place
+        FROM location
+        ORDER BY location_code
+        """
+    )
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            rows = conn.execute(query).mappings().all()
+    except Exception as exc:  # surface a clean 503 instead of a 500 stack trace
+        raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
+    return [dict(row) for row in rows]
+
+
 @router.get("/location/{code}")
 def get_location(code: str):
     """Return one location from the ``location`` table by location_code."""

@@ -10,6 +10,7 @@ from app.routers import location
 from app.routers import predictions
 from app.routers import evaluations
 from app.routers import maintenance
+from app.routers import supply
 
 app = FastAPI(
     title="Hangar Mind API",
@@ -41,6 +42,7 @@ app.include_router(location.router, prefix="/v1")
 app.include_router(predictions.router, prefix="/v1")
 app.include_router(evaluations.router, prefix="/v1")
 app.include_router(maintenance.router, prefix="/v1")
+app.include_router(supply.router, prefix="/v1")
 
 
 @app.get("/health")

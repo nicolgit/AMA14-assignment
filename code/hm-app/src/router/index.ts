@@ -3,12 +3,14 @@ import HomeView from '../views/HomeView.vue'
 import RulView from '../views/RulView.vue'
 import AircraftDetailView from '../views/AircraftDetailView.vue'
 import EngineDetailView from '../views/EngineDetailView.vue'
+import SupplyDecisionView from '../views/SupplyDecisionView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', name: 'home', component: HomeView },
     { path: '/rul', name: 'rul', component: RulView },
+    { path: '/supply/:aircraftid?', name: 'supply-decision', component: SupplyDecisionView },
     {
       path: '/aircraft/:aircraftid',
       name: 'aircraft-detail',
