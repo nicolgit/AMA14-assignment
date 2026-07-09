@@ -1,10 +1,10 @@
-location_code,location_name,place
-AMS,Amsterdam Schiphol Airport,Netherlands
-BCN,Barcelona-El Prat Airport,Spain
-CDG,Paris Charles de Gaulle Airport,France
-FRA,Frankfurt Airport,Germany
-LGW,London Gatwick Airport,United Kingdom
-LHR,London Heathrow Airport,United Kingdom
-MAD,Adolfo Suarez Madrid-Barajas Airport,Spain
-MUC,Munich Airport,Germany
-ORY,Paris Orly Airport,France
+location_code,location_name,place,latitude,longitude
+AMS,Amsterdam Schiphol Airport,Netherlands,52.300000,4.765000
+BCN,Barcelona-El Prat Airport,Spain,41.296944,2.078333
+CDG,Paris Charles de Gaulle Airport,France,49.009722,2.547778
+FRA,Frankfurt Airport,Germany,50.033333,8.570556
+LGW,London Gatwick Airport,United Kingdom,51.148056,-0.190278
+LHR,London Heathrow Airport,United Kingdom,51.477500,-0.461389
+MAD,Adolfo Suarez Madrid-Barajas Airport,Spain,40.472222,-3.560833
+MUC,Munich Airport,Germany,48.353889,11.786111
+ORY,Paris Orly Airport,France,48.723333,2.379444

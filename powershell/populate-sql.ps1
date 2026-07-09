@@ -37,6 +37,21 @@ function ConvertTo-SqlFloat($v) {
   if ($null -eq $v -or "$v" -eq '') { return 'NULL' }
   return [string]([double]$v).ToString([System.Globalization.CultureInfo]::InvariantCulture)
 }
+function Add-InsertStatement {
+  param(
+    [System.Text.StringBuilder]$Builder,
+    [string]$TableName,
+    [string]$ColumnList,
+    [object[]]$Rows
+  )
+
+  if ($null -eq $Rows -or $Rows.Count -eq 0) {
+    return
+  }
+
+  [void]$Builder.AppendLine("INSERT INTO $TableName ($ColumnList) VALUES")
+  [void]$Builder.AppendLine(($Rows -join ",`n") + ";")
+}
 
 $sb = New-Object System.Text.StringBuilder
 
@@ -45,7 +60,9 @@ $sb = New-Object System.Text.StringBuilder
 CREATE TABLE IF NOT EXISTS location (
   location_code text PRIMARY KEY,
   location_name text NOT NULL,
-  place         text NOT NULL
+  place         text NOT NULL,
+  latitude      double precision,
+  longitude     double precision
 );
 
 CREATE TABLE IF NOT EXISTS status (
@@ -86,9 +103,35 @@ CREATE TABLE IF NOT EXISTS evaluation (
   value real
 );
 
+CREATE TABLE IF NOT EXISTS spare_part (
+  part_number text PRIMARY KEY,
+  name        text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS spare_part_location (
+  part_number text REFERENCES spare_part(part_number),
+  location    text REFERENCES location(location_code),
+  on_hand     int,
+  reserved    int,
+  min_stock   int,
+  PRIMARY KEY (part_number, location)
+);
+
+CREATE TABLE IF NOT EXISTS location_distance (
+  location_1    text REFERENCES location(location_code),
+  location_2    text REFERENCES location(location_code),
+  distance      real,
+  transfer_time int,
+  transfer_cost real,
+  PRIMARY KEY (location_1, location_2)
+);
+
 -- ricarica pulita (idempotente)
 TRUNCATE TABLE aircraft;
 TRUNCATE TABLE engine;
+TRUNCATE TABLE spare_part_location;
+TRUNCATE TABLE location_distance;
+TRUNCATE TABLE spare_part;
 TRUNCATE TABLE location CASCADE;
 TRUNCATE TABLE status   CASCADE;
 TRUNCATE TABLE prediction;
@@ -98,18 +141,16 @@ TRUNCATE TABLE evaluation;
 # --- location ---
 $loc = Import-Csv (Join-Path $sampleDir 'location.csv')
 $vals = $loc | ForEach-Object {
-  "($(ConvertTo-SqlText $_.location_code), $(ConvertTo-SqlText $_.location_name), $(ConvertTo-SqlText $_.place))"
+  "($(ConvertTo-SqlText $_.location_code), $(ConvertTo-SqlText $_.location_name), $(ConvertTo-SqlText $_.place), $(ConvertTo-SqlFloat $_.latitude), $(ConvertTo-SqlFloat $_.longitude))"
 }
-[void]$sb.AppendLine("INSERT INTO location (location_code, location_name, place) VALUES")
-[void]$sb.AppendLine(($vals -join ",`n") + ";")
+Add-InsertStatement -Builder $sb -TableName 'location' -ColumnList 'location_code, location_name, place, latitude, longitude' -Rows $vals
 
 # --- status ---
 $st = Import-Csv (Join-Path $sampleDir 'status.csv')
 $vals = $st | ForEach-Object {
   "($(ConvertTo-SqlText $_.status_code), $(ConvertTo-SqlText $_.status_name), $(ConvertTo-SqlText $_.description))"
 }
-[void]$sb.AppendLine("INSERT INTO status (status_code, status_name, description) VALUES")
-[void]$sb.AppendLine(($vals -join ",`n") + ";")
+Add-InsertStatement -Builder $sb -TableName 'status' -ColumnList 'status_code, status_name, description' -Rows $vals
 
 # --- aircraft ---
 $ac = Import-Csv (Join-Path $sampleDir 'aircraft.csv')
@@ -128,8 +169,7 @@ $vals = $ac | ForEach-Object {
     ConvertTo-SqlText $_.base_location
   ) -join ', ') + ')'
 }
-[void]$sb.AppendLine("INSERT INTO aircraft (aircraft_id, model, engine_count, engine_ids, operator, total_flight_cycles, status, msn, in_service_date, total_flight_hours, base_location) VALUES")
-[void]$sb.AppendLine(($vals -join ",`n") + ";")
+Add-InsertStatement -Builder $sb -TableName 'aircraft' -ColumnList 'aircraft_id, model, engine_count, engine_ids, operator, total_flight_cycles, status, msn, in_service_date, total_flight_hours, base_location' -Rows $vals
 
 # --- engine ---
 $eng = Import-Csv (Join-Path $sampleDir 'engine.csv')
@@ -142,8 +182,40 @@ $vals = $eng | ForEach-Object {
     ConvertTo-SqlText $_.installation_date
   ) -join ', ') + ')'
 }
-[void]$sb.AppendLine("INSERT INTO engine (engineid, manifacturer, engine_serial_number, position_on_iarcraft, installation_date) VALUES")
-[void]$sb.AppendLine(($vals -join ",`n") + ";")
+Add-InsertStatement -Builder $sb -TableName 'engine' -ColumnList 'engineid, manifacturer, engine_serial_number, position_on_iarcraft, installation_date' -Rows $vals
+
+# --- spare_part ---
+$sp = Import-Csv (Join-Path $sampleDir 'spare-part.csv')
+$vals = $sp | ForEach-Object {
+  "($(ConvertTo-SqlText $_.part_number), $(ConvertTo-SqlText $_.name))"
+}
+Add-InsertStatement -Builder $sb -TableName 'spare_part' -ColumnList 'part_number, name' -Rows $vals
+
+# --- spare_part_location ---
+$spl = Import-Csv (Join-Path $sampleDir 'spare-part-location.csv')
+$vals = $spl | ForEach-Object {
+  '(' + (@(
+    ConvertTo-SqlText $_.part_number
+    ConvertTo-SqlText $_.location
+    ConvertTo-SqlInt  $_.on_hand
+    ConvertTo-SqlInt  $_.reserved
+    ConvertTo-SqlInt  $_.min_stock
+  ) -join ', ') + ')'
+}
+Add-InsertStatement -Builder $sb -TableName 'spare_part_location' -ColumnList 'part_number, location, on_hand, reserved, min_stock' -Rows $vals
+
+# --- location_distance ---
+$ld = Import-Csv (Join-Path $sampleDir 'location-distance.csv')
+$vals = $ld | ForEach-Object {
+  '(' + (@(
+    ConvertTo-SqlText  $_.location_1
+    ConvertTo-SqlText  $_.location_2
+    ConvertTo-SqlFloat $_.distance
+    ConvertTo-SqlInt   $_.transfer_time
+    ConvertTo-SqlFloat $_.transfer_cost
+  ) -join ', ') + ')'
+}
+Add-InsertStatement -Builder $sb -TableName 'location_distance' -ColumnList 'location_1, location_2, distance, transfer_time, transfer_cost' -Rows $vals
 
 # --- prediction ---
 $predFile = Join-Path $repo 'ml-outputs/predictions.csv'
@@ -151,8 +223,7 @@ $pred = Import-Csv $predFile
 $vals = $pred | ForEach-Object {
   "($(ConvertTo-SqlInt $_.engine_id), $(ConvertTo-SqlFloat $_.predicted_rul))"
 }
-[void]$sb.AppendLine("INSERT INTO prediction (engine_id, predicted_rul) VALUES")
-[void]$sb.AppendLine(($vals -join ",`n") + ";")
+Add-InsertStatement -Builder $sb -TableName 'prediction' -ColumnList 'engine_id, predicted_rul' -Rows $vals
 
 # --- evaluation ---
 $evalFile = Join-Path $repo 'ml-outputs/evaluation.json'
@@ -160,12 +231,11 @@ $eval = Get-Content $evalFile -Raw | ConvertFrom-Json
 $vals = $eval.PSObject.Properties | ForEach-Object {
   "($(ConvertTo-SqlText $_.Name), $(ConvertTo-SqlFloat $_.Value))"
 }
-[void]$sb.AppendLine("INSERT INTO evaluation (name, value) VALUES")
-[void]$sb.AppendLine(($vals -join ",`n") + ";")
+Add-InsertStatement -Builder $sb -TableName 'evaluation' -ColumnList 'name, value' -Rows $vals
 
 $sqlFile = Join-Path ([System.IO.Path]::GetTempPath()) 'load-data-sample.generated.sql'
 Set-Content -Path $sqlFile -Value $sb.ToString() -Encoding utf8
-Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count), engine=$($eng.Count), prediction=$($pred.Count), evaluation=$($eval.PSObject.Properties.Count))"
+Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count), engine=$($eng.Count), spare_part=$($sp.Count), spare_part_location=$($spl.Count), location_distance=$($ld.Count), prediction=$($pred.Count), evaluation=$($eval.PSObject.Properties.Count))"
 
 # 3. Esegui lo script usando un token Entra come password (passwordless)
 # `execute` vive nell'estensione rdbms-connect: installala se manca.
