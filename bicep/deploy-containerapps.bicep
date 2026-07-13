@@ -52,6 +52,21 @@ param postgresUser string = ''
 @description('Application Insights connection string. Shared by all telemetry-capable services so traces land in one instance.')
 param applicationInsightsConnectionString string = ''
 
+@description('Azure AI Foundry/OpenAI endpoint used by the backend API.')
+param azureOpenAiEndpoint string = ''
+
+@description('Azure OpenAI chat model deployment name used by the backend API.')
+param azureOpenAiChatDeployment string = ''
+
+@description('Azure OpenAI embedding model deployment name used by ingestion/RAG.')
+param azureOpenAiEmbeddingDeployment string = ''
+
+@description('Azure AI Search endpoint used by the backend API.')
+param azureSearchEndpoint string = ''
+
+@description('Default Azure AI Search index name used by the backend API.')
+param azureSearchIndexName string = ''
+
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
 var environmentName = toLower(take('cae-${nameSeedSafe}', 32))
 var backendAppName = toLower(take('api-${nameSeedSafe}', 32))
@@ -78,6 +93,8 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
 
 var hasBackendIdentity = !empty(backendUserAssignedIdentityId)
 var hasAppInsights = !empty(applicationInsightsConnectionString)
+var hasAzureOpenAi = !empty(azureOpenAiEndpoint)
+var hasAzureSearch = !empty(azureSearchEndpoint)
 
 var appInsightsEnv = hasAppInsights ? [
   {
@@ -104,7 +121,29 @@ var backendEnv = concat([
     name: 'AZURE_CLIENT_ID'
     value: backendUserAssignedIdentityClientId
   }
-] : [], appInsightsEnv)
+] : [], appInsightsEnv, hasAzureOpenAi ? [
+  {
+    name: 'AZURE_OPENAI_ENDPOINT'
+    value: azureOpenAiEndpoint
+  }
+  {
+    name: 'AZURE_OPENAI_CHAT_DEPLOYMENT'
+    value: azureOpenAiChatDeployment
+  }
+  {
+    name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT'
+    value: azureOpenAiEmbeddingDeployment
+  }
+] : [], hasAzureSearch ? [
+  {
+    name: 'AZURE_SEARCH_ENDPOINT'
+    value: azureSearchEndpoint
+  }
+  {
+    name: 'AZURE_SEARCH_INDEX_NAME'
+    value: azureSearchIndexName
+  }
+] : [])
 
 // Backend API container app (external ingress so the SPA can call it from the browser).
 resource backend 'Microsoft.App/containerApps@2024-03-01' = {

@@ -20,11 +20,53 @@ param deployerObjectId string = '6e94d310-1194-469a-af8e-bd502dcf2782' // get fr
 @description('Microsoft Entra UPN of the deployer. Used to grant the deployer PostgreSQL Entra admin.')
 param deployerPrincipalName string = 'nicold_microsoft.com#EXT#@MngEnvMCAP361336.onmicrosoft.com' // get from `az ad signed-in-user show --query userPrincipalName -o tsv`
 
+@description('Deploy the Azure ML workspace, RUL endpoint and shared monitoring resources.')
+param deployMlPlatform bool = true
+
 @description('Deploy the PostgreSQL Flexible Server (application/metadata store).')
 param deployPostgres bool = true
 
-@description('Deploy the Container Apps environment with backend API and frontend SPA.')
+@description('Deploy the Container Apps environment with backend API and frontend SPA. Requires deployMlPlatform=true because it reuses Log Analytics and Application Insights from the ML module.')
 param deployContainerApps bool = true
+
+@description('Deploy Azure AI Foundry/OpenAI model deployments and Azure AI Search for the Engineering Copilot RAG capability.')
+param deployEngineeringAi bool = true
+
+@description('Engineering Copilot chat model deployment name.')
+param engineeringChatDeploymentName string = 'gpt-5-6-sol'
+
+@description('Engineering Copilot chat model name. Override if a newer chat model is available in the selected region.')
+param engineeringChatModelName string = 'gpt-5.6-sol'
+
+@description('Engineering Copilot chat model version. Must be available in the selected region.')
+param engineeringChatModelVersion string = '2026-07-09'
+
+@description('Engineering Copilot chat deployment SKU. GPT-5.6 Sol in France Central supports GlobalStandard and DataZoneStandard.')
+@allowed([
+  'GlobalStandard'
+  'DataZoneStandard'
+  'Standard'
+])
+param engineeringChatDeploymentSku string = 'DataZoneStandard'
+
+@description('Engineering Copilot embedding model deployment name.')
+param engineeringEmbeddingDeploymentName string = 'text-embedding-3-large'
+
+@description('Engineering Copilot embedding model name.')
+param engineeringEmbeddingModelName string = 'text-embedding-3-large'
+
+@description('Engineering Copilot embedding model version. Must be available in the selected region.')
+param engineeringEmbeddingModelVersion string = '1'
+
+@description('Azure AI Search SKU for the Engineering Copilot RAG index.')
+@allowed([
+  'free'
+  'basic'
+  'standard'
+  'standard2'
+  'standard3'
+])
+param engineeringSearchSku string = 'basic'
 
 // username esempio adminuser@pg-amamrodeve0623
 @description('PostgreSQL administrator login name (local password auth).')
@@ -71,7 +113,7 @@ module currentUser 'current-user.bicep' = {
 }
 
 // 4. Container Registry associated with the ML workspace
-module acr 'deploy-acr.bicep' = {
+module acr 'deploy-acr.bicep' = if (deployMlPlatform) {
   name: 'deploy-acr'
   scope: rg
   params: {
@@ -82,24 +124,24 @@ module acr 'deploy-acr.bicep' = {
 }
 
 // 5. ML + Monitoring platform
-module mlplatform 'deploy-ml.bicep' = {
+module mlplatform 'deploy-ml.bicep' = if (deployMlPlatform) {
   name: 'deploy-ml'
   scope: rg
   params: {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
-    containerRegistryId: acr.outputs.containerRegistryId
+    containerRegistryId: acr.?outputs.containerRegistryId ?? ''
   }
 }
 
 // 6. RBAC on current user for the AML workspace storage account
-module currentUserMlStorage 'current-user.bicep' = {
+module currentUserMlStorage 'current-user.bicep' = if (deployMlPlatform) {
   name: 'current-user-ml-storage'
   scope: rg
   params: {
     deployerObjectId: deployerObjectId
-    storageAccountName: mlplatform.outputs.mlWorkspaceStorageAccountName
+    storageAccountName: mlplatform.?outputs.mlWorkspaceStorageAccountName ?? ''
     grantFilePrivilegedContributor: true
   }
 }
@@ -115,7 +157,27 @@ module backendIdentity 'deploy-identity.bicep' = {
   }
 }
 
-// 8. PostgreSQL Flexible Server (small PoC SKU, Entra + password auth)
+// 8. Azure AI Foundry/OpenAI + Azure AI Search for Engineering Copilot RAG
+module engineeringAi 'deploy-ai.bicep' = if (deployEngineeringAi) {
+  name: 'deploy-engineering-ai'
+  scope: rg
+  params: {
+    location: location
+    resourceNameSeed: resourceNameSeed
+    tags: tags
+    backendPrincipalId: backendIdentity.outputs.principalId
+    chatDeploymentName: engineeringChatDeploymentName
+    chatModelName: engineeringChatModelName
+    chatModelVersion: engineeringChatModelVersion
+    chatDeploymentSku: engineeringChatDeploymentSku
+    embeddingDeploymentName: engineeringEmbeddingDeploymentName
+    embeddingModelName: engineeringEmbeddingModelName
+    embeddingModelVersion: engineeringEmbeddingModelVersion
+    searchSku: engineeringSearchSku
+  }
+}
+
+// 9. PostgreSQL Flexible Server (small PoC SKU, Entra + password auth)
 module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
   name: 'deploy-postgres'
   scope: rg
@@ -133,21 +195,26 @@ module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
   }
 }
 
-// 9. Container Apps environment hosting the backend API and the frontend SPA
-module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps) {
+// 10. Container Apps environment hosting the backend API and the frontend SPA
+module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps && deployMlPlatform) {
   name: 'deploy-containerapps'
   scope: rg
   params: {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
-    logAnalyticsWorkspaceName: mlplatform.outputs.logAnalyticsWorkspaceName
+    logAnalyticsWorkspaceName: mlplatform.?outputs.logAnalyticsWorkspaceName ?? ''
     backendUserAssignedIdentityId: backendIdentity.outputs.identityResourceId
     backendUserAssignedIdentityClientId: backendIdentity.outputs.clientId
-    applicationInsightsConnectionString: mlplatform.outputs.applicationInsightsConnectionString
+    applicationInsightsConnectionString: mlplatform.?outputs.applicationInsightsConnectionString ?? ''
     postgresFqdn: deployPostgres ? postgres.?outputs.postgresFqdn ?? '' : ''
     postgresDatabaseName: deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''
     postgresUser: backendIdentity.outputs.identityName
+    azureOpenAiEndpoint: deployEngineeringAi ? engineeringAi.?outputs.aiServicesEndpoint ?? '' : ''
+    azureOpenAiChatDeployment: deployEngineeringAi ? engineeringAi.?outputs.chatDeploymentName ?? '' : ''
+    azureOpenAiEmbeddingDeployment: deployEngineeringAi ? engineeringAi.?outputs.embeddingDeploymentName ?? '' : ''
+    azureSearchEndpoint: deployEngineeringAi ? engineeringAi.?outputs.searchEndpoint ?? '' : ''
+    azureSearchIndexName: deployEngineeringAi ? engineeringAi.?outputs.searchIndexName ?? '' : ''
   }
 }
 
@@ -156,18 +223,25 @@ output dataLakeAccountName string = datalake.outputs.storageAccountName
 output dataLakeAccountId string = datalake.outputs.storageAccountId
 output dataLakePrimaryDfsEndpoint string = datalake.outputs.primaryDfsEndpoint
 output currentUserBlobDataContributorRoleAssignmentId string = currentUser.outputs.storageBlobDataContributorRoleAssignmentId
-output mlWorkspaceStorageBlobDataContributorRoleAssignmentId string = currentUserMlStorage.outputs.storageBlobDataContributorRoleAssignmentId
-output mlWorkspaceName string = mlplatform.outputs.mlWorkspaceName
-output mlOnlineEndpointName string = mlplatform.outputs.mlOnlineEndpointName
-output keyVaultName string = mlplatform.outputs.keyVaultName
-output applicationInsightsName string = mlplatform.outputs.applicationInsightsName
-output logAnalyticsWorkspaceName string = mlplatform.outputs.logAnalyticsWorkspaceName
-output mlWorkspaceStorageAccountName string = mlplatform.outputs.mlWorkspaceStorageAccountName
-output containerRegistryName string = acr.outputs.containerRegistryName
-output containerRegistryLoginServer string = acr.outputs.containerRegistryLoginServer
+output mlWorkspaceStorageBlobDataContributorRoleAssignmentId string = deployMlPlatform ? currentUserMlStorage.?outputs.storageBlobDataContributorRoleAssignmentId ?? '' : ''
+output mlWorkspaceName string = deployMlPlatform ? mlplatform.?outputs.mlWorkspaceName ?? '' : ''
+output mlOnlineEndpointName string = deployMlPlatform ? mlplatform.?outputs.mlOnlineEndpointName ?? '' : ''
+output keyVaultName string = deployMlPlatform ? mlplatform.?outputs.keyVaultName ?? '' : ''
+output applicationInsightsName string = deployMlPlatform ? mlplatform.?outputs.applicationInsightsName ?? '' : ''
+output logAnalyticsWorkspaceName string = deployMlPlatform ? mlplatform.?outputs.logAnalyticsWorkspaceName ?? '' : ''
+output mlWorkspaceStorageAccountName string = deployMlPlatform ? mlplatform.?outputs.mlWorkspaceStorageAccountName ?? '' : ''
+output containerRegistryName string = deployMlPlatform ? acr.?outputs.containerRegistryName ?? '' : ''
+output containerRegistryLoginServer string = deployMlPlatform ? acr.?outputs.containerRegistryLoginServer ?? '' : ''
 output postgresServerName string = deployPostgres ? postgres.?outputs.postgresServerName ?? '' : ''
 output postgresFqdn string = deployPostgres ? postgres.?outputs.postgresFqdn ?? '' : ''
 output postgresDatabaseName string = deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''
-output containerAppsEnvironmentName string = deployContainerApps ? containerApps.?outputs.containerAppsEnvironmentName ?? '' : ''
-output backendApiFqdn string = deployContainerApps ? containerApps.?outputs.backendFqdn ?? '' : ''
-output frontendSpaFqdn string = deployContainerApps ? containerApps.?outputs.frontendFqdn ?? '' : ''
+output engineeringAiServicesName string = deployEngineeringAi ? engineeringAi.?outputs.aiServicesName ?? '' : ''
+output engineeringAiServicesEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.aiServicesEndpoint ?? '' : ''
+output engineeringAiChatDeploymentName string = deployEngineeringAi ? engineeringAi.?outputs.chatDeploymentName ?? '' : ''
+output engineeringAiEmbeddingDeploymentName string = deployEngineeringAi ? engineeringAi.?outputs.embeddingDeploymentName ?? '' : ''
+output engineeringSearchServiceName string = deployEngineeringAi ? engineeringAi.?outputs.searchServiceName ?? '' : ''
+output engineeringSearchEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.searchEndpoint ?? '' : ''
+output engineeringSearchIndexName string = deployEngineeringAi ? engineeringAi.?outputs.searchIndexName ?? '' : ''
+output containerAppsEnvironmentName string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.containerAppsEnvironmentName ?? '' : ''
+output backendApiFqdn string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.backendFqdn ?? '' : ''
+output frontendSpaFqdn string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.frontendFqdn ?? '' : ''
