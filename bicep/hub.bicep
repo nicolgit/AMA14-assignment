@@ -43,20 +43,22 @@ param vmSize string = 'Standard_D4s_v5'
 @description('Local administrator username for the virtual machine.')
 param adminUsername string = 'azureuser'
 
+// PoC shortcut: this VM has no public IP and is reachable only through Bastion.
+// For production, pass this value at deployment time instead of keeping a default.
 @secure()
 @description('Local administrator password for the virtual machine. Pass this at deployment time.')
-param adminPassword string
+param adminPassword string = 'pass@word123!'
 
-@description('Windows Server image publisher.')
-param imagePublisher string = 'MicrosoftWindowsServer'
+@description('Windows 11 image publisher.')
+param imagePublisher string = 'MicrosoftWindowsDesktop'
 
-@description('Windows Server image offer.')
-param imageOffer string = 'WindowsServer'
+@description('Windows 11 image offer.')
+param imageOffer string = 'windows-11'
 
-@description('Windows Server image SKU.')
-param imageSku string = '2022-datacenter-azure-edition'
+@description('Windows 11 image SKU.')
+param imageSku string = 'win11-24h2-pro'
 
-@description('Windows Server image version.')
+@description('Windows 11 image version.')
 param imageVersion string = 'latest'
 
 @description('OS disk type for the virtual machine.')
