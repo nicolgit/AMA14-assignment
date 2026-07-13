@@ -26,8 +26,11 @@ npm install
 ## Run the dev server
 
 ```powershell
+cd code/hm-app
+
 # Start Vite with hot-reload
 npm run dev
+
 ```
 
 App available at: `http://localhost:5173`

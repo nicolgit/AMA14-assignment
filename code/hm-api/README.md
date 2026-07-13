@@ -27,12 +27,14 @@ pip install -r requirements.txt
 ## Run the server
 
 ```powershell
+cd code/hm-api
+
 # Activate venv (if not already active)
 .\.venv\Scripts\Activate.ps1
 
 # Start with hot-reload - DEVELOPMENT
 $env:CORS_ORIGINS = "http://localhost:5173"
-$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0708.postgres.database.azure.com:5432/hangarmind"
+$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0713.postgres.database.azure.com:5432/hangarmind"
 
 uvicorn app.main:app --reload --port 8080
 
