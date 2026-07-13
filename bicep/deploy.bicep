@@ -215,6 +215,8 @@ module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps && d
     azureOpenAiEmbeddingDeployment: deployEngineeringAi ? engineeringAi.?outputs.embeddingDeploymentName ?? '' : ''
     azureSearchEndpoint: deployEngineeringAi ? engineeringAi.?outputs.searchEndpoint ?? '' : ''
     azureSearchIndexName: deployEngineeringAi ? engineeringAi.?outputs.searchIndexName ?? '' : ''
+    azureSpeechEndpoint: deployEngineeringAi ? engineeringAi.?outputs.speechEndpoint ?? '' : ''
+    azureSpeechRegion: deployEngineeringAi ? engineeringAi.?outputs.speechRegion ?? '' : ''
   }
 }
 
@@ -222,6 +224,7 @@ output resourceGroupId string = rg.id
 output dataLakeAccountName string = datalake.outputs.storageAccountName
 output dataLakeAccountId string = datalake.outputs.storageAccountId
 output dataLakePrimaryDfsEndpoint string = datalake.outputs.primaryDfsEndpoint
+output dataLakeContainerNames array = datalake.outputs.containerNames
 output currentUserBlobDataContributorRoleAssignmentId string = currentUser.outputs.storageBlobDataContributorRoleAssignmentId
 output mlWorkspaceStorageBlobDataContributorRoleAssignmentId string = deployMlPlatform ? currentUserMlStorage.?outputs.storageBlobDataContributorRoleAssignmentId ?? '' : ''
 output mlWorkspaceName string = deployMlPlatform ? mlplatform.?outputs.mlWorkspaceName ?? '' : ''
@@ -239,6 +242,9 @@ output engineeringAiServicesName string = deployEngineeringAi ? engineeringAi.?o
 output engineeringAiServicesEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.aiServicesEndpoint ?? '' : ''
 output engineeringAiChatDeploymentName string = deployEngineeringAi ? engineeringAi.?outputs.chatDeploymentName ?? '' : ''
 output engineeringAiEmbeddingDeploymentName string = deployEngineeringAi ? engineeringAi.?outputs.embeddingDeploymentName ?? '' : ''
+output engineeringSpeechServiceName string = deployEngineeringAi ? engineeringAi.?outputs.speechServiceName ?? '' : ''
+output engineeringSpeechEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.speechEndpoint ?? '' : ''
+output engineeringSpeechRegion string = deployEngineeringAi ? engineeringAi.?outputs.speechRegion ?? '' : ''
 output engineeringSearchServiceName string = deployEngineeringAi ? engineeringAi.?outputs.searchServiceName ?? '' : ''
 output engineeringSearchEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.searchEndpoint ?? '' : ''
 output engineeringSearchIndexName string = deployEngineeringAi ? engineeringAi.?outputs.searchIndexName ?? '' : ''

@@ -67,6 +67,12 @@ param azureSearchEndpoint string = ''
 @description('Default Azure AI Search index name used by the backend API.')
 param azureSearchIndexName string = ''
 
+@description('Azure AI Speech endpoint used by the backend API.')
+param azureSpeechEndpoint string = ''
+
+@description('Azure AI Speech region used by the backend API.')
+param azureSpeechRegion string = ''
+
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
 var environmentName = toLower(take('cae-${nameSeedSafe}', 32))
 var backendAppName = toLower(take('api-${nameSeedSafe}', 32))
@@ -95,6 +101,7 @@ var hasBackendIdentity = !empty(backendUserAssignedIdentityId)
 var hasAppInsights = !empty(applicationInsightsConnectionString)
 var hasAzureOpenAi = !empty(azureOpenAiEndpoint)
 var hasAzureSearch = !empty(azureSearchEndpoint)
+var hasAzureSpeech = !empty(azureSpeechEndpoint)
 
 var appInsightsEnv = hasAppInsights ? [
   {
@@ -142,6 +149,15 @@ var backendEnv = concat([
   {
     name: 'AZURE_SEARCH_INDEX_NAME'
     value: azureSearchIndexName
+  }
+] : [], hasAzureSpeech ? [
+  {
+    name: 'AZURE_SPEECH_ENDPOINT'
+    value: azureSpeechEndpoint
+  }
+  {
+    name: 'AZURE_SPEECH_REGION'
+    value: azureSpeechRegion
   }
 ] : [])
 

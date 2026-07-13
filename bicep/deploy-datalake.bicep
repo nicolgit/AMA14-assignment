@@ -21,6 +21,11 @@ param containers array = [
   'raw'
   'canonical'
   'curated'
+  'engineering-docs'
+  'engineering-audio'
+  'engineering-transcripts'
+  'engineering-evidence'
+  'engineering-audit'
 ]
 
 // Storage account name: lowercase, 3-24 chars, globally unique if seed is globally unique

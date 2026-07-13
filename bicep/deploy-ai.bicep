@@ -16,6 +16,13 @@ param backendPrincipalId string = ''
 ])
 param aiServicesSku string = 'S0'
 
+@description('Azure AI Speech SKU.')
+@allowed([
+  'F0'
+  'S0'
+])
+param speechSku string = 'S0'
+
 @description('Chat model deployment name used by the application.')
 param chatDeploymentName string = 'gpt-5-6-sol'
 
@@ -64,11 +71,13 @@ param searchIndexName string = 'engineering-docs'
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var aiServicesName = toLower(take('ai${nameSeedSafe}${uniqueSuffix}', 64))
+var speechServiceName = toLower(take('spch${nameSeedSafe}${uniqueSuffix}', 64))
 var searchServiceName = toLower(take('srch${nameSeedSafe}${uniqueSuffix}', 60))
 
 var hasBackendPrincipal = !empty(backendPrincipalId)
 
 var cognitiveServicesOpenAiUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd')
+var cognitiveServicesSpeechUserRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'f2dc8367-1007-4938-bd23-fe263f013447')
 var searchServiceContributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7ca78c08-252a-4471-8644-bb5ff32d4ba0')
 var searchIndexDataContributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
 
@@ -129,6 +138,26 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
   }
 }
 
+resource speech 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
+  name: speechServiceName
+  location: location
+  tags: tags
+  kind: 'SpeechServices'
+  sku: {
+    name: speechSku
+  }
+  properties: {
+    customSubDomainName: speechServiceName
+    publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      defaultAction: 'Allow'
+      virtualNetworkRules: []
+      ipRules: []
+    }
+    disableLocalAuth: true
+  }
+}
+
 resource search 'Microsoft.Search/searchServices@2023-11-01' = {
   name: searchServiceName
   location: location
@@ -158,6 +187,16 @@ resource backendOpenAiUser 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
+resource backendSpeechUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasBackendPrincipal) {
+  name: guid(speech.id, backendPrincipalId, cognitiveServicesSpeechUserRoleDefinitionId)
+  scope: speech
+  properties: {
+    roleDefinitionId: cognitiveServicesSpeechUserRoleDefinitionId
+    principalId: backendPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource backendSearchServiceContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasBackendPrincipal) {
   name: guid(search.id, backendPrincipalId, searchServiceContributorRoleDefinitionId)
   scope: search
@@ -182,9 +221,13 @@ output aiServicesName string = aiServices.name
 output aiServicesEndpoint string = aiServices.properties.endpoint
 output chatDeploymentName string = chatDeployment.name
 output embeddingDeploymentName string = embeddingDeployment.name
+output speechServiceName string = speech.name
+output speechEndpoint string = speech.properties.endpoint
+output speechRegion string = location
 output searchServiceName string = search.name
 output searchEndpoint string = 'https://${search.name}.search.windows.net'
 output searchIndexName string = searchIndexName
 output backendOpenAiUserRoleAssignmentId string = hasBackendPrincipal ? backendOpenAiUser.id : ''
+output backendSpeechUserRoleAssignmentId string = hasBackendPrincipal ? backendSpeechUser.id : ''
 output backendSearchServiceContributorRoleAssignmentId string = hasBackendPrincipal ? backendSearchServiceContributor.id : ''
 output backendSearchIndexDataContributorRoleAssignmentId string = hasBackendPrincipal ? backendSearchIndexDataContributor.id : ''
