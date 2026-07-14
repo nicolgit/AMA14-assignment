@@ -4,7 +4,7 @@ targetScope = 'subscription'
 param resourceGroupName string = 'ama-mro-hub'
 
 @description('Azure region for the hub lab resources.')
-param location string = 'francecentral'
+param location string = 'italynorth'
 
 @description('Common tags applied to all resources.')
 param tags object = {
