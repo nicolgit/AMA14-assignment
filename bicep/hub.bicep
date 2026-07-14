@@ -72,12 +72,13 @@ param osDiskStorageAccountType string = 'Premium_LRS'
 @description('Azure Bastion host name.')
 param bastionHostName string = 'bas-hub-lab'
 
-@description('Azure Bastion SKU. Basic is sufficient for a single-user lab scenario.')
+@description('Azure Bastion SKU. Developer is the lowest-cost option for a single-user lab; it needs no public IP or AzureBastionSubnet.')
 @allowed([
+  'Developer'
   'Basic'
   'Standard'
 ])
-param bastionSkuName string = 'Basic'
+param bastionSkuName string = 'Developer'
 
 @description('Azure Bastion public IP name.')
 param bastionPublicIpName string = 'pip-bas-hub-lab'
