@@ -38,7 +38,7 @@ param bastionSubnetAddressPrefix string = '10.12.2.0/24'
 param vmName string = 'vm-hub-lab-upload'
 
 @description('Virtual machine size. Standard_D4s_v5 provides 4 vCPU and 16 GiB RAM in France Central.')
-param vmSize string = 'Standard_D4s_v5'
+param vmSize string = 'Standard_D4_v5'
 
 @description('Local administrator username for the virtual machine.')
 param adminUsername string = 'azureuser'

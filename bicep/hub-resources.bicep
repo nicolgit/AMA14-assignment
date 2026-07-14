@@ -58,7 +58,7 @@ param imageVersion string = 'latest'
   'StandardSSD_LRS'
   'Standard_LRS'
 ])
-param osDiskStorageAccountType string = 'Premium_LRS'
+param osDiskStorageAccountType string = 'StandardSSD_LRS'
 
 @description('Azure Bastion host name.')
 param bastionHostName string = 'bas-hub-lab'
