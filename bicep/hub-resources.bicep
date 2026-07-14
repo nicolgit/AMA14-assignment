@@ -28,8 +28,8 @@ param bastionSubnetAddressPrefix string = '10.12.2.0/24'
 @description('Virtual machine name.')
 param vmName string = 'vm-hub-lab-upload'
 
-@description('Virtual machine size. Standard_D4s_v5 provides 4 vCPU and 16 GiB RAM in France Central.')
-param vmSize string = 'Standard_D4s_v5'
+@description('Virtual machine size. Standard_D4_v5 provides 4 vCPU and 16 GiB RAM in France Central.')
+param vmSize string = 'Standard_D4_v5'
 
 @description('Local administrator username for the virtual machine.')
 param adminUsername string = 'azureuser'
@@ -276,6 +276,7 @@ resource bastionHost 'Microsoft.Network/bastionHosts@2024-05-01' = {
 }
 
 output virtualNetworkName string = hubVnet.name
+output virtualNetworkId string = hubVnet.id
 output defaultSubnetName string = defaultSubnetName
 output bastionSubnetName string = bastionSubnetName
 output vmName string = vm.name
