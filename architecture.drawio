@@ -35,7 +35,7 @@
           <mxGeometry height="29.2" width="30" x="100" y="28.80000000000001" as="geometry" />
         </mxCell>
         <mxCell id="r1nNMXa1CsmiP7AX6wEA-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;dashed=1;strokeColor=#7EA6E0;arcSize=2;fontFamily=Helvetica;" value="" vertex="1">
-          <mxGeometry height="500" width="187.26" x="80" y="360" as="geometry" />
+          <mxGeometry height="360" width="187.26" x="80" y="360" as="geometry" />
         </mxCell>
         <mxCell id="r1nNMXa1CsmiP7AX6wEA-11" parent="1" style="aspect=fixed;html=1;points=[];align=left;image;fontSize=12;image=img/lib/azure2/networking/Virtual_Networks.svg;fontColor=#333333;fontFamily=Helvetica;" value="hub-lab-net&lt;br&gt;10.12.0.0/16" vertex="1">
           <mxGeometry height="13.73" width="23" x="87" y="365" as="geometry" />
@@ -53,7 +53,7 @@
           <mxGeometry height="133" width="142" x="89" y="570" as="geometry" />
         </mxCell>
         <mxCell id="r1nNMXa1CsmiP7AX6wEA-19" parent="1" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/networking/Bastions.svg;fontColor=#333333;fontFamily=Helvetica;" value="lab-bastion" vertex="1">
-          <mxGeometry height="42" width="35.82" x="130" y="765.5" as="geometry" />
+          <mxGeometry height="42" width="35.82" x="142.09" y="615.5" as="geometry" />
         </mxCell>
         <mxCell id="r1nNMXa1CsmiP7AX6wEA-20" parent="1" style="shadow=0;dashed=0;html=1;strokeColor=none;fillColor=#4495D1;labelPosition=right;verticalLabelPosition=middle;verticalAlign=middle;align=left;outlineConnect=0;shape=mxgraph.veeam.globe;fontSize=12;fontColor=#808080;direction=south;rotation=-90;fontFamily=Helvetica;" value="france central" vertex="1">
           <mxGeometry height="13.5" width="13" x="250.26" y="440" as="geometry" />
