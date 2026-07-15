@@ -43,13 +43,15 @@ param vpnGatewayDomainNameLabel string = 'hangarvpn'
 @description('Virtual Network Gateway name.')
 param vpnGatewayName string = 'vpngw-hangarmind-spoke'
 
-@description('Virtual Network Gateway SKU. VpnGw1 is the cheapest SKU that supports Azure AD P2S authentication and OpenVPN.')
+@description('Virtual Network Gateway SKU. New VPN gateways must use AZ SKUs; VpnGw1AZ is the cheapest SKU that supports Azure AD P2S authentication and OpenVPN.')
 @allowed([
-  'VpnGw1'
-  'VpnGw2'
-  'VpnGw3'
+  'VpnGw1AZ'
+  'VpnGw2AZ'
+  'VpnGw3AZ'
+  'VpnGw4AZ'
+  'VpnGw5AZ'
 ])
-param vpnGatewaySku string = 'VpnGw1'
+param vpnGatewaySku string = 'VpnGw1AZ'
 
 @description('P2S VPN client address pool. Must not overlap with the spoke VNet or other address spaces.')
 param vpnClientAddressPool string = '10.14.0.0/16'
@@ -81,6 +83,11 @@ resource spokeVnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
     addressSpace: {
       addressPrefixes: [
         spokeVirtualNetworkAddressPrefix
+      ]
+    }
+    dhcpOptions: {
+      dnsServers: [
+        dnsResolverInboundIp
       ]
     }
     subnets: [
@@ -216,6 +223,11 @@ resource vpnGatewayPublicIp 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
   sku: {
     name: 'Standard'
   }
+  zones: [
+    '1'
+    '2'
+    '3'
+  ]
   properties: {
     publicIPAllocationMethod: 'Static'
     dnsSettings: {
@@ -272,14 +284,6 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2024-05-01' = {
       aadTenant: '${environment().authentication.loginEndpoint}${aadTenantId}/'
       aadAudience: aadAudience
       aadIssuer: 'https://sts.windows.net/${aadTenantId}/'
-      // VPN clients use the Private DNS Resolver inbound endpoint for name
-      // resolution so private endpoint FQDNs resolve correctly over the VPN.
-      // vpnClientDnsServers is a valid ARM REST API property on VpnClientConfiguration
-      // but is not yet reflected in the Bicep type definitions; suppress the type warning.
-      #disable-next-line BCP037
-      vpnClientDnsServers: [
-        dnsResolverInboundIp
-      ]
     }
   }
 }
