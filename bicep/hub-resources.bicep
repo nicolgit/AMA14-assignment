@@ -28,8 +28,8 @@ param bastionSubnetAddressPrefix string = '10.12.2.0/24'
 @description('Virtual machine name.')
 param vmName string = 'vm-hub-lab-upload'
 
-@description('Virtual machine size. Standard_D4s_v5 provides 4 vCPU and 16 GiB RAM in France Central.')
-param vmSize string = 'Standard_D4s_v5'
+@description('Virtual machine size. Standard_D4_v5 provides 4 vCPU and 16 GiB RAM in France Central.')
+param vmSize string = 'Standard_D4_v5'
 
 @description('Local administrator username for the virtual machine.')
 param adminUsername string = 'azureuser'
@@ -58,17 +58,18 @@ param imageVersion string = 'latest'
   'StandardSSD_LRS'
   'Standard_LRS'
 ])
-param osDiskStorageAccountType string = 'Premium_LRS'
+param osDiskStorageAccountType string = 'StandardSSD_LRS'
 
 @description('Azure Bastion host name.')
 param bastionHostName string = 'bas-hub-lab'
 
-@description('Azure Bastion SKU. Basic is sufficient for a single-user lab scenario.')
+@description('Azure Bastion SKU. Developer is the lowest-cost option for a single-user lab; it needs no public IP or AzureBastionSubnet.')
 @allowed([
+  'Developer'
   'Basic'
   'Standard'
 ])
-param bastionSkuName string = 'Basic'
+param bastionSkuName string = 'Developer'
 
 @description('Azure Bastion public IP name.')
 param bastionPublicIpName string = 'pip-bas-hub-lab'
@@ -232,7 +233,8 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
   }
 }
 
-resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
+// The Developer SKU does not use a public IP; it is only created for Basic/Standard.
+resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2024-05-01' = if (bastionSkuName != 'Developer') {
   name: bastionPublicIpName
   location: location
   tags: tags
@@ -251,7 +253,12 @@ resource bastionHost 'Microsoft.Network/bastionHosts@2024-05-01' = {
   sku: {
     name: bastionSkuName
   }
-  properties: {
+  // Developer SKU attaches directly to the VNet; Basic/Standard require an ipConfiguration with a public IP.
+  properties: bastionSkuName == 'Developer' ? {
+    virtualNetwork: {
+      id: hubVnet.id
+    }
+  } : {
     ipConfigurations: [
       {
         name: 'IpConf'
@@ -269,11 +276,12 @@ resource bastionHost 'Microsoft.Network/bastionHosts@2024-05-01' = {
 }
 
 output virtualNetworkName string = hubVnet.name
+output virtualNetworkId string = hubVnet.id
 output defaultSubnetName string = defaultSubnetName
 output bastionSubnetName string = bastionSubnetName
 output vmName string = vm.name
 output vmPrivateIpAddress string = vmNic.properties.ipConfigurations[0].properties.privateIPAddress
 output bastionHostName string = bastionHost.name
-output bastionPublicIpAddress string = bastionPublicIp.properties.ipAddress
+output bastionPublicIpAddress string = bastionSkuName == 'Developer' ? '' : bastionPublicIp.?properties.ipAddress ?? ''
 output natGatewayName string = natGateway.name
 output natGatewayPublicIpAddress string = natGatewayPublicIp.properties.ipAddress

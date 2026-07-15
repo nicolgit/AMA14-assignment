@@ -29,6 +29,36 @@ param deployPostgres bool = true
 @description('Deploy the Container Apps environment with backend API and frontend SPA. Requires deployMlPlatform=true because it reuses Log Analytics and Application Insights from the ML module.')
 param deployContainerApps bool = true
 
+@description('Deploy the hangarmind spoke virtual network and peer it with the hub VNet. Requires deployHub=true (or an existing hub VNet) to complete the peering.')
+param deploySpokeNetwork bool = true
+
+@description('Deploy the hub lab resources (VNet, VM, Bastion, NAT Gateway) in a dedicated resource group.')
+param deployHub bool = true
+
+@description('Name of the dedicated resource group that hosts the hub resources.')
+param hubResourceGroupName string = 'ama-mro-hub'
+
+@description('Azure region for the hub resources. Kept separate from the workload location so the hub stays in Italy North.')
+@allowed([
+  'italynorth'
+  'francecentral'
+  'westeurope'
+  'northeurope'
+])
+param hubLocation string = 'italynorth'
+
+@description('Name of the hub virtual network to peer with.')
+param hubVirtualNetworkName string = 'hub-lab-net'
+
+@description('Spoke virtual network name.')
+param spokeVirtualNetworkName string = 'hangarmind-spoke-01'
+
+@description('Spoke virtual network address prefix.')
+param spokeVirtualNetworkAddressPrefix string = '10.13.0.0/16'
+
+@description('Deploy private endpoints (Data Lake storage + PostgreSQL) with static private IPs on the spoke private-endpoints subnet. Requires deploySpokeNetwork=true.')
+param deployPrivateEndpoints bool = true
+
 @description('Deploy Azure AI Foundry/OpenAI model deployments and Azure AI Search for the Engineering Copilot RAG capability.')
 param deployEngineeringAi bool = true
 
@@ -89,6 +119,24 @@ resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
   location: location
   tags: tags
+}
+
+// 1b. Dedicated hub resource group (kept in Italy North)
+resource hubRg 'Microsoft.Resources/resourceGroups@2024-03-01' = if (deployHub) {
+  name: hubResourceGroupName
+  location: hubLocation
+  tags: union(tags, { component: 'hub-lab' })
+}
+
+// 1c. Hub lab resources (VNet, VM, Bastion, NAT Gateway) in the dedicated hub RG
+module hubResources 'hub-resources.bicep' = if (deployHub) {
+  name: 'deploy-hub-lab-resources'
+  scope: hubRg
+  params: {
+    location: hubLocation
+    tags: union(tags, { component: 'hub-lab' })
+    virtualNetworkName: hubVirtualNetworkName
+  }
 }
 
 // 2. Data Lake (ADLS Gen2) via dedicated module
@@ -220,7 +268,89 @@ module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps && d
   }
 }
 
+// 11. Hangarmind spoke virtual network + spoke->hub peering (in the workload RG)
+module spokeNetwork 'deploy-spoke-network.bicep' = if (deploySpokeNetwork) {
+  name: 'deploy-spoke-network'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    spokeVirtualNetworkName: spokeVirtualNetworkName
+    spokeVirtualNetworkAddressPrefix: spokeVirtualNetworkAddressPrefix
+    hubVirtualNetworkId: deployHub ? hubResources.?outputs.virtualNetworkId ?? '' : resourceId(hubResourceGroupName, 'Microsoft.Network/virtualNetworks', hubVirtualNetworkName)
+  }
+}
+
+// 12. Hub->spoke peering, deployed into the hub RG to complete the bidirectional link
+module hubPeering 'deploy-hub-peering.bicep' = if (deploySpokeNetwork) {
+  name: 'deploy-hub-peering'
+  scope: resourceGroup(hubResourceGroupName)
+  params: {
+    // Sourcing the name from the hub module output creates an implicit dependency,
+    // ensuring the hub VNet exists before this peering is created.
+    hubVirtualNetworkName: deployHub ? hubResources.?outputs.virtualNetworkName ?? hubVirtualNetworkName : hubVirtualNetworkName
+    spokeVirtualNetworkId: spokeNetwork.?outputs.spokeVirtualNetworkId ?? ''
+  }
+}
+
+// 13. Private DNS zones (blob, dfs, postgres) linked to both spoke and hub
+module privateDns 'deploy-private-dns.bicep' = if (deployPrivateEndpoints && deploySpokeNetwork) {
+  name: 'deploy-private-dns'
+  scope: rg
+  params: {
+    tags: tags
+    spokeVirtualNetworkId: spokeNetwork.?outputs.spokeVirtualNetworkId ?? ''
+    hubVirtualNetworkId: deployHub ? hubResources.?outputs.virtualNetworkId ?? '' : resourceId(hubResourceGroupName, 'Microsoft.Network/virtualNetworks', hubVirtualNetworkName)
+    enablePostgresZone: deployPostgres
+  }
+}
+
+// 14. Private endpoints (Data Lake storage + PostgreSQL) with static private IPs on the spoke
+module privateEndpoints 'deploy-private-endpoints.bicep' = if (deployPrivateEndpoints && deploySpokeNetwork) {
+  name: 'deploy-private-endpoints'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    privateEndpointsSubnetId: spokeNetwork.?outputs.privateEndpointsSubnetId ?? ''
+    dataLakeStorageAccountId: datalake.outputs.storageAccountId
+    postgresServerId: deployPostgres ? postgres.?outputs.postgresServerId ?? '' : ''
+    blobPrivateDnsZoneId: privateDns.?outputs.blobPrivateDnsZoneId ?? ''
+    dfsPrivateDnsZoneId: privateDns.?outputs.dfsPrivateDnsZoneId ?? ''
+    postgresPrivateDnsZoneId: privateDns.?outputs.postgresPrivateDnsZoneId ?? ''
+  }
+}
+
+// 15. Private endpoints + DNS zones for the AI stack (AI Services, Speech, Search)
+module aiPrivateEndpoints 'deploy-ai-private-endpoints.bicep' = if (deployPrivateEndpoints && deploySpokeNetwork && deployEngineeringAi) {
+  name: 'deploy-ai-private-endpoints'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    privateEndpointsSubnetId: spokeNetwork.?outputs.privateEndpointsSubnetId ?? ''
+    spokeVirtualNetworkId: spokeNetwork.?outputs.spokeVirtualNetworkId ?? ''
+    hubVirtualNetworkId: deployHub ? hubResources.?outputs.virtualNetworkId ?? '' : resourceId(hubResourceGroupName, 'Microsoft.Network/virtualNetworks', hubVirtualNetworkName)
+    aiServicesId: engineeringAi.?outputs.aiServicesId ?? ''
+    speechServiceId: engineeringAi.?outputs.speechServiceId ?? ''
+    searchServiceId: engineeringAi.?outputs.searchServiceId ?? ''
+  }
+}
+
 output resourceGroupId string = rg.id
+output hubResourceGroupName string = deployHub ? hubRg.name : ''
+output hubVirtualNetworkName string = deployHub ? hubResources.?outputs.virtualNetworkName ?? '' : ''
+output hubVmName string = deployHub ? hubResources.?outputs.vmName ?? '' : ''
+output hubVmPrivateIpAddress string = deployHub ? hubResources.?outputs.vmPrivateIpAddress ?? '' : ''
+output hubBastionHostName string = deployHub ? hubResources.?outputs.bastionHostName ?? '' : ''
+output spokeVirtualNetworkName string = deploySpokeNetwork ? spokeNetwork.?outputs.spokeVirtualNetworkName ?? '' : ''
+output spokeVirtualNetworkId string = deploySpokeNetwork ? spokeNetwork.?outputs.spokeVirtualNetworkId ?? '' : ''
+output dataLakeBlobPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork ? privateEndpoints.?outputs.dataLakeBlobPrivateIpAddress ?? '' : ''
+output dataLakeDfsPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork ? privateEndpoints.?outputs.dataLakeDfsPrivateIpAddress ?? '' : ''
+output postgresPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork ? privateEndpoints.?outputs.postgresPrivateIpAddress ?? '' : ''
+output aiServicesPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork && deployEngineeringAi ? aiPrivateEndpoints.?outputs.aiServicesPrivateIpAddress ?? '' : ''
+output speechPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork && deployEngineeringAi ? aiPrivateEndpoints.?outputs.speechPrivateIpAddress ?? '' : ''
+output searchPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork && deployEngineeringAi ? aiPrivateEndpoints.?outputs.searchPrivateIpAddress ?? '' : ''
 output dataLakeAccountName string = datalake.outputs.storageAccountName
 output dataLakeAccountId string = datalake.outputs.storageAccountId
 output dataLakePrimaryDfsEndpoint string = datalake.outputs.primaryDfsEndpoint

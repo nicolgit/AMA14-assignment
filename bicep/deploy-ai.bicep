@@ -219,13 +219,16 @@ resource backendSearchIndexDataContributor 'Microsoft.Authorization/roleAssignme
 
 output aiServicesName string = aiServices.name
 output aiServicesEndpoint string = aiServices.properties.endpoint
+output aiServicesId string = aiServices.id
 output chatDeploymentName string = chatDeployment.name
 output embeddingDeploymentName string = embeddingDeployment.name
 output speechServiceName string = speech.name
 output speechEndpoint string = speech.properties.endpoint
+output speechServiceId string = speech.id
 output speechRegion string = location
 output searchServiceName string = search.name
 output searchEndpoint string = 'https://${search.name}.search.windows.net'
+output searchServiceId string = search.id
 output searchIndexName string = searchIndexName
 output backendOpenAiUserRoleAssignmentId string = hasBackendPrincipal ? backendOpenAiUser.id : ''
 output backendSpeechUserRoleAssignmentId string = hasBackendPrincipal ? backendSpeechUser.id : ''
