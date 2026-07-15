@@ -42,6 +42,7 @@ resource blobSpokeLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@20
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: spokeVirtualNetworkId
     }
@@ -54,6 +55,7 @@ resource blobHubLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: hubVirtualNetworkId
     }
@@ -66,6 +68,7 @@ resource dfsSpokeLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@202
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: spokeVirtualNetworkId
     }
@@ -78,6 +81,7 @@ resource dfsHubLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: hubVirtualNetworkId
     }
@@ -90,6 +94,7 @@ resource postgresSpokeLink 'Microsoft.Network/privateDnsZones/virtualNetworkLink
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: spokeVirtualNetworkId
     }
@@ -102,6 +107,7 @@ resource postgresHubLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: hubVirtualNetworkId
     }

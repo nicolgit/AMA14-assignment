@@ -87,6 +87,7 @@ resource cognitiveServicesSpokeLink 'Microsoft.Network/privateDnsZones/virtualNe
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: spokeVirtualNetworkId
     }
@@ -99,6 +100,7 @@ resource cognitiveServicesHubLink 'Microsoft.Network/privateDnsZones/virtualNetw
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: hubVirtualNetworkId
     }
@@ -111,6 +113,7 @@ resource openAiSpokeLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: spokeVirtualNetworkId
     }
@@ -123,6 +126,7 @@ resource openAiHubLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@20
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: hubVirtualNetworkId
     }
@@ -135,6 +139,7 @@ resource aiServicesSpokeLink 'Microsoft.Network/privateDnsZones/virtualNetworkLi
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: spokeVirtualNetworkId
     }
@@ -147,6 +152,7 @@ resource aiServicesHubLink 'Microsoft.Network/privateDnsZones/virtualNetworkLink
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: hubVirtualNetworkId
     }
@@ -159,6 +165,7 @@ resource searchSpokeLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: spokeVirtualNetworkId
     }
@@ -171,6 +178,7 @@ resource searchHubLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@20
   location: 'global'
   properties: {
     registrationEnabled: false
+    resolutionPolicy: 'NxDomainRedirect'
     virtualNetwork: {
       id: hubVirtualNetworkId
     }
