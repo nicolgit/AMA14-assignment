@@ -241,8 +241,8 @@ module spokeNetwork 'deploy-spoke-network.bicep' = if (deploySpokeNetwork) {
     tags: tags
     spokeVirtualNetworkName: spokeVirtualNetworkName
     spokeVirtualNetworkAddressPrefix: spokeVirtualNetworkAddressPrefix
-    // Authorize the deployer (nicold@microsoft.com guest) as a VPN Reader so
-    // they can download the Azure VPN client profile from the portal.
+    // Grant the deployer Reader access on the VPN Gateway so they can download
+    // the Azure VPN client profile from the portal and connect via P2S VPN.
     vpnGuestUserObjectId: deployerObjectId
   }
 }

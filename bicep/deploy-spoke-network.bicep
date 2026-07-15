@@ -268,13 +268,14 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2024-05-01' = {
       vpnAuthenticationTypes: [
         'AAD'
       ]
-      #disable-next-line no-hardcoded-env-urls
+      // environment().authentication.loginEndpoint adapts to sovereign clouds automatically.
       aadTenant: '${environment().authentication.loginEndpoint}${aadTenantId}/'
       aadAudience: aadAudience
       aadIssuer: 'https://sts.windows.net/${aadTenantId}/'
       // VPN clients use the Private DNS Resolver inbound endpoint for name
       // resolution so private endpoint FQDNs resolve correctly over the VPN.
-      // vpnClientDnsServers is a valid ARM property; suppress the Bicep type warning.
+      // vpnClientDnsServers is a valid ARM REST API property on VpnClientConfiguration
+      // but is not yet reflected in the Bicep type definitions; suppress the type warning.
       #disable-next-line BCP037
       vpnClientDnsServers: [
         dnsResolverInboundIp
