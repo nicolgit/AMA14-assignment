@@ -1,6 +1,6 @@
 <mxfile host="Electron">
   <diagram name="Page-1" id="7ztEtzb7M-Nw4jyKo4fd">
-    <mxGraphModel dx="2165" dy="2159" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2004" dy="1870" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -257,6 +257,15 @@
         </mxCell>
         <mxCell id="LY71K55Ry0geAzHFUMrj-43" parent="LY71K55Ry0geAzHFUMrj-46" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/other/Private_Endpoints.svg;" value="10.13.2.9" vertex="1">
           <mxGeometry height="39.23" width="41.23" x="1.2999999999999545" y="92.82000000000005" as="geometry" />
+        </mxCell>
+        <mxCell id="bvXjnudqKofgoG7gww_N-1" connectable="0" parent="1" style="group;fontFamily=Helvetica;" value="" vertex="1">
+          <mxGeometry height="133" width="142" x="500" y="960" as="geometry" />
+        </mxCell>
+        <mxCell id="bvXjnudqKofgoG7gww_N-2" parent="bvXjnudqKofgoG7gww_N-1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;arcSize=3;strokeColor=none;fillColor=#E6E6E6;fontColor=#333333;align=left;verticalAlign=top;fontFamily=Helvetica;" value="P2S VPN client pool&lt;br&gt;10.14.0.0/16" vertex="1">
+          <mxGeometry height="133" width="142" as="geometry" />
+        </mxCell>
+        <mxCell id="bvXjnudqKofgoG7gww_N-3" parent="bvXjnudqKofgoG7gww_N-1" style="image;sketch=0;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/mscae/VirtualMachineWindows.svg;fontFamily=Helvetica;" value="PC client" vertex="1">
+          <mxGeometry height="41.43" width="45.03" x="48.48000000000002" y="45.789999999999964" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
