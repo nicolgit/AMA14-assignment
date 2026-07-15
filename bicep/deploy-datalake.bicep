@@ -28,6 +28,13 @@ param containers array = [
   'engineering-audit'
 ]
 
+@description('Controls public network access on the storage account. Set to Disabled when the account is only reachable through a private endpoint.')
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+param publicNetworkAccess string = 'Disabled'
+
 // Storage account name: lowercase, 3-24 chars, globally unique if seed is globally unique
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
 var storageAccountName = toLower(take('lake${nameSeedSafe}', 24))
@@ -47,9 +54,9 @@ resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
     allowBlobPublicAccess: false
     allowSharedKeyAccess: false
     supportsHttpsTrafficOnly: true
-    publicNetworkAccess: 'Enabled' // restrict via Private Endpoint in prod
+    publicNetworkAccess: publicNetworkAccess
     networkAcls: {
-      defaultAction: 'Allow'
+      defaultAction: publicNetworkAccess == 'Disabled' ? 'Deny' : 'Allow'
       bypass: 'AzureServices'
     }
     encryption: {
