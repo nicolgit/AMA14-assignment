@@ -181,6 +181,7 @@ module engineeringAi 'deploy-ai.bicep' = if (deployEngineeringAi) {
     resourceNameSeed: resourceNameSeed
     tags: tags
     backendPrincipalId: backendIdentity.outputs.principalId
+    deployerPrincipalId: deployerObjectId
     chatDeploymentName: engineeringChatDeploymentName
     chatModelName: engineeringChatModelName
     chatModelVersion: engineeringChatModelVersion

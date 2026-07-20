@@ -10,6 +10,9 @@ param tags object = {}
 @description('Backend managed identity principal ID. Receives RBAC on AI and Search resources when provided.')
 param backendPrincipalId string = ''
 
+@description('Microsoft Entra object ID of the deployer running the bootstrap scripts. Receives Search RBAC required to configure the RAG index.')
+param deployerPrincipalId string = ''
+
 @description('Azure AI Services SKU for Foundry/OpenAI model deployments.')
 @allowed([
   'S0'
@@ -84,6 +87,7 @@ var speechServiceName = toLower(take('spch${nameSeedSafe}${uniqueSuffix}', 64))
 var searchServiceName = toLower(take('srch${nameSeedSafe}${uniqueSuffix}', 60))
 
 var hasBackendPrincipal = !empty(backendPrincipalId)
+var hasDeployerPrincipal = !empty(deployerPrincipalId)
 var hasStorage = !empty(dataLakeStorageAccountName)
 var hasStorageId = !empty(dataLakeStorageAccountId)
 
@@ -241,6 +245,26 @@ resource backendSearchIndexDataContributor 'Microsoft.Authorization/roleAssignme
   }
 }
 
+resource deployerSearchServiceContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasDeployerPrincipal) {
+  name: guid(search.id, deployerPrincipalId, searchServiceContributorRoleDefinitionId)
+  scope: search
+  properties: {
+    roleDefinitionId: searchServiceContributorRoleDefinitionId
+    principalId: deployerPrincipalId
+    principalType: 'User'
+  }
+}
+
+resource deployerSearchIndexDataContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasDeployerPrincipal) {
+  name: guid(search.id, deployerPrincipalId, searchIndexDataContributorRoleDefinitionId)
+  scope: search
+  properties: {
+    roleDefinitionId: searchIndexDataContributorRoleDefinitionId
+    principalId: deployerPrincipalId
+    principalType: 'User'
+  }
+}
+
 // -- Search managed-identity RBAC --------------------------------------------
 // Grants the Search service's system-assigned identity the minimum permissions
 // needed to run the indexing pipeline without using API keys.
@@ -287,14 +311,14 @@ resource searchSplStorageBlob 'Microsoft.Search/searchServices/sharedPrivateLink
   }
 }
 
-// Outbound private link to the Azure OpenAI embedding endpoint.
-resource searchSplOpenAi 'Microsoft.Search/searchServices/sharedPrivateLinkResources@2023-11-01' = {
+// Outbound private link to the Azure AI Services embedding endpoint.
+resource searchSplCognitiveServices 'Microsoft.Search/searchServices/sharedPrivateLinkResources@2023-11-01' = {
   parent: search
-  name: 'spl-openai'
+  name: 'spl-cognitiveservices'
   properties: {
     privateLinkResourceId: aiServices.id
-    groupId: 'openai_account'
-    requestMessage: 'Azure AI Search requires access to Azure OpenAI for embedding generation'
+    groupId: 'cognitiveservices_account'
+    requestMessage: 'Azure AI Search requires access to Azure AI Services for embedding generation'
   }
 }
 

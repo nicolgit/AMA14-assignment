@@ -39,8 +39,9 @@ resource mlWorkspaceStorage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
     accessTier: 'Hot'
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
-    // Identity-based access only: shared keys disabled.
-    allowSharedKeyAccess: false
+    // Azure ML image build and job snapshot download use SAS URLs generated
+    // from the workspace storage account. Keep shared key access enabled here.
+    allowSharedKeyAccess: true
     supportsHttpsTrafficOnly: true
     publicNetworkAccess: 'Enabled'
     networkAcls: {

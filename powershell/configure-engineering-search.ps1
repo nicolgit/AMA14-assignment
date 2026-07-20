@@ -12,7 +12,7 @@ Prerequisiti: az login gia' effettuato; client connesso alla VPN P2S quando Sear
 
 param(
   [string]$RG = 'ama-mro-playground',
-  [string]$DeploymentName = 'hangarmind-dev'
+  [string]$DeploymentName = 'deploy'
 )
 
 $base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
@@ -31,6 +31,61 @@ function Get-DeploymentOutputValue {
   }
 
   return $property.Value.value
+}
+
+function Test-EngineeringSearchOutputs {
+  param(
+    [object]$Outputs
+  )
+
+  return [bool](
+    (Get-DeploymentOutputValue -Outputs $Outputs -Name 'engineeringSearchServiceName') -and
+    (Get-DeploymentOutputValue -Outputs $Outputs -Name 'engineeringSearchEndpoint') -and
+    (Get-DeploymentOutputValue -Outputs $Outputs -Name 'dataLakeAccountName') -and
+    (Get-DeploymentOutputValue -Outputs $Outputs -Name 'dataLakeAccountId') -and
+    (Get-DeploymentOutputValue -Outputs $Outputs -Name 'engineeringAiServicesEndpoint') -and
+    (Get-DeploymentOutputValue -Outputs $Outputs -Name 'engineeringAiServicesId') -and
+    (Get-DeploymentOutputValue -Outputs $Outputs -Name 'engineeringAiServicesName')
+  )
+}
+
+function Get-SubscriptionDeploymentOutputs {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Name
+  )
+
+  Write-Host "`nLoading deployment outputs from subscription deployment '$Name'..." -ForegroundColor Cyan
+  $outputsJson = az deployment sub show -n $Name --query properties.outputs -o json 2>$null
+  if ($LASTEXITCODE -eq 0 -and $outputsJson) {
+    $outputs = $outputsJson | ConvertFrom-Json
+    if ($outputs -and (Test-EngineeringSearchOutputs -Outputs $outputs)) {
+      return @{ Name = $Name; Outputs = $outputs }
+    }
+  }
+
+  Write-Warning "Subscription deployment '$Name' was not found or does not contain the Engineering Search outputs. Searching recent successful subscription deployments..."
+
+  $deploymentsJson = az deployment sub list --query "[?properties.provisioningState=='Succeeded'].{name:name,timestamp:properties.timestamp}" -o json
+  if ($LASTEXITCODE -ne 0 -or -not $deploymentsJson) {
+    throw 'Could not list subscription deployments. Run az login and verify that the selected subscription is correct.'
+  }
+
+  $deployments = $deploymentsJson | ConvertFrom-Json | Sort-Object timestamp -Descending
+  foreach ($deployment in $deployments) {
+    $candidateOutputsJson = az deployment sub show -n $deployment.name --query properties.outputs -o json 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $candidateOutputsJson) {
+      continue
+    }
+
+    $candidateOutputs = $candidateOutputsJson | ConvertFrom-Json
+    if ($candidateOutputs -and (Test-EngineeringSearchOutputs -Outputs $candidateOutputs)) {
+      Write-Host "  Using subscription deployment '$($deployment.name)'." -ForegroundColor Green
+      return @{ Name = $deployment.name; Outputs = $candidateOutputs }
+    }
+  }
+
+  throw 'No successful subscription deployment with Engineering Search outputs was found. Pass the correct deployment name with -DeploymentName.'
 }
 
 function Approve-StoragePendingPrivateEndpointConnections {
@@ -75,7 +130,7 @@ function Approve-CognitiveServicesPendingPrivateEndpointConnections {
   $connections = az cognitiveservices account show `
     --name $AccountName `
     --resource-group $ResourceGroupName `
-    --query "properties.privateEndpointConnections[?privateLinkServiceConnectionState.status=='Pending'].name" `
+    --query "properties.privateEndpointConnections[?properties.privateLinkServiceConnectionState.status=='Pending'].name" `
     -o tsv
 
   if (-not $connections) {
@@ -84,19 +139,34 @@ function Approve-CognitiveServicesPendingPrivateEndpointConnections {
   }
 
   foreach ($connectionName in ($connections -split "`r?`n" | Where-Object { $_ })) {
-    az cognitiveservices account private-endpoint-connection approve `
+    $connectionId = az cognitiveservices account show `
+      --name $AccountName `
       --resource-group $ResourceGroupName `
-      --account-name $AccountName `
-      --name $connectionName `
-      --description 'Approved for Azure AI Search embedding generation' `
+      --query "properties.privateEndpointConnections[?name=='$connectionName'].id | [0]" `
+      -o tsv
+
+    if (-not $connectionId) {
+      throw "Could not resolve private endpoint connection ID for '$connectionName'."
+    }
+
+    az resource update `
+      --ids $connectionId `
+      --api-version 2024-10-01 `
+      --set properties.privateLinkServiceConnectionState.status=Approved `
+            properties.privateLinkServiceConnectionState.description='Approved for Azure AI Search embedding generation' `
+            properties.privateLinkServiceConnectionState.actionsRequired=None `
       --only-show-errors | Out-Null
+
+    if ($LASTEXITCODE -ne 0) {
+      throw "Failed to approve AI Services connection: $connectionName"
+    }
 
     Write-Host "  Approved AI Services connection: $connectionName" -ForegroundColor Green
   }
 }
 
-Write-Host "`nLoading deployment outputs from subscription deployment '$DeploymentName'..." -ForegroundColor Cyan
-$outputs = az deployment sub show -n $DeploymentName --query properties.outputs -o json | ConvertFrom-Json
+$deploymentResult = Get-SubscriptionDeploymentOutputs -Name $DeploymentName
+$outputs = $deploymentResult.Outputs
 
 $searchServiceName = Get-DeploymentOutputValue -Outputs $outputs -Name 'engineeringSearchServiceName'
 $searchEndpoint = Get-DeploymentOutputValue -Outputs $outputs -Name 'engineeringSearchEndpoint'
@@ -131,6 +201,11 @@ if ($embeddingDeploymentName) {
 }
 if ($searchIndexName) {
   $configureParams.IndexName = $searchIndexName
+}
+
+$searchAdminKey = az search admin-key show --resource-group $RG --service-name $searchServiceName --query primaryKey -o tsv 2>$null
+if ($LASTEXITCODE -eq 0 -and $searchAdminKey) {
+  $configureParams.SearchAdminKey = $searchAdminKey
 }
 
 Write-Host "`nConfiguring Azure AI Search index '$($configureParams.IndexName)' on '$searchServiceName'..." -ForegroundColor Cyan

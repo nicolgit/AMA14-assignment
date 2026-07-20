@@ -88,7 +88,7 @@ Upload .md → ADLS Gen2 (private endpoint in spoke VNet, 10.13.2.5)
 | Resource | Type | Purpose |
 |---|---|---|
 | `spl-storage-blob` | `Microsoft.Search/searchServices/sharedPrivateLinkResources` | Outbound private link: Search → ADLS Gen2 blob endpoint |
-| `spl-openai` | `Microsoft.Search/searchServices/sharedPrivateLinkResources` | Outbound private link: Search → Azure OpenAI endpoint |
+| `spl-cognitiveservices` | `Microsoft.Search/searchServices/sharedPrivateLinkResources` | Outbound private link: Search → Azure AI Services embedding endpoint |
 | PE for Search (`pe-hangarmind-srch...-searchService`) | `Microsoft.Network/privateEndpoints` | Inbound private endpoint so clients reach Search privately (created by `deploy-ai-private-endpoints.bicep`) |
 | PE for ADLS Gen2 blob/dfs | `Microsoft.Network/privateEndpoints` | Inbound private endpoint for storage (created by `deploy-private-endpoints.bicep`) |
 | PE for AI Services | `Microsoft.Network/privateEndpoints` | Inbound private endpoint for Azure OpenAI (created by `deploy-ai-private-endpoints.bicep`) |
@@ -339,7 +339,7 @@ az rest \
 
 **Checks:**
 1. Verify the Cognitive Services OpenAI User RBAC is assigned to the Search managed identity (Step 5.2).
-2. Verify the Shared Private Link `spl-openai` is in `Approved` state (Step 5.1).
+2. Verify the Shared Private Link `spl-cognitiveservices` is in `Approved` state (Step 5.1).
 3. Confirm the AI Services resource has `disableLocalAuth: true` — when this is set, only Entra tokens are accepted and the skillset must use `authIdentity: {"@odata.type": "#Microsoft.Azure.Search.DataNoneIdentity"}` (which tells Search to use its own managed identity).
 
 ### Search service is unreachable after deployment

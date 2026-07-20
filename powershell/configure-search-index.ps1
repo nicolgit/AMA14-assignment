@@ -51,6 +51,10 @@
     ISO 8601 duration for the indexer schedule (default: PT1H = every hour).
     Set to empty string '' to disable scheduling (manual trigger only).
 
+.PARAMETER SearchAdminKey
+    Optional Azure AI Search admin key used for bootstrap operations. When omitted,
+    the script authenticates with Microsoft Entra ID RBAC.
+
 .EXAMPLE
     # Collect outputs from the Bicep deployment first:
     $out = az deployment sub show -n deploy --query properties.outputs -o json | ConvertFrom-Json
@@ -90,7 +94,9 @@ param(
 
     [string]$ContainerName = 'engineering-docs',
 
-    [string]$ScheduleInterval = 'PT1H'
+    [string]$ScheduleInterval = 'PT1H',
+
+    [string]$SearchAdminKey = ''
 )
 
 Set-StrictMode -Version Latest
@@ -119,14 +125,22 @@ function Invoke-SearchApi {
     param(
         [string]$Method,
         [string]$Path,
-        [hashtable]$Body = @{}
+        [hashtable]$Body = @{},
+        [switch]$IgnoreNotFound
     )
-    $token  = Get-BearerToken
     $uri    = "$($SearchEndpoint.TrimEnd('/'))/$Path"
-    $authValue = 'Bearer ' + $token
-    $headers = @{
-        Authorization  = $authValue
-        'Content-Type' = 'application/json'
+    $headers = if ($SearchAdminKey) {
+        @{
+            'api-key'      = $SearchAdminKey
+            'Content-Type' = 'application/json'
+        }
+    }
+    else {
+        $token = Get-BearerToken
+        @{
+            Authorization  = 'Bearer ' + $token
+            'Content-Type' = 'application/json'
+        }
     }
     $params = @{
         Method  = $Method
@@ -142,11 +156,19 @@ function Invoke-SearchApi {
     }
     catch {
         $statusCode = $_.Exception.Response?.StatusCode?.value__
+        if ($IgnoreNotFound -and $statusCode -eq 404) {
+            return $null
+        }
         $detail     = $_.ErrorDetails?.Message
         Write-Error "Search API $Method $uri failed ($statusCode): $detail"
         throw
     }
 }
+
+Write-Host "`nResetting existing Search index resources for '$IndexName' if present..." -ForegroundColor Cyan
+Invoke-SearchApi -Method DELETE -Path "indexers/$($IndexName)-ix?api-version=2024-07-01" -IgnoreNotFound | Out-Null
+Invoke-SearchApi -Method DELETE -Path "skillsets/$($IndexName)-ss?api-version=2024-07-01" -IgnoreNotFound | Out-Null
+Invoke-SearchApi -Method DELETE -Path "indexes/$($IndexName)?api-version=2024-07-01" -IgnoreNotFound | Out-Null
 
 # ---------------------------------------------------------------------------
 # 1. Data Source
@@ -162,7 +184,6 @@ $dataSourceBody = @{
     }
     container   = @{
         name  = $ContainerName
-        query = '*.md'
     }
     dataDeletionDetectionPolicy = $null
     dataChangeDetectionPolicy   = @{
@@ -188,7 +209,7 @@ $vectorDimensions = 3072
 $indexBody = @{
     name   = $IndexName
     fields = @(
-        @{ name = 'id';                       type = 'Edm.String';                  key = $true;  searchable = $false; filterable = $true;  sortable = $true;  facetable = $false; retrievable = $true }
+        @{ name = 'id';                       type = 'Edm.String';                  key = $true;  searchable = $true;  filterable = $true;  sortable = $true;  facetable = $false; retrievable = $true; analyzer = 'keyword' }
         @{ name = 'parent_id';                type = 'Edm.String';                  key = $false; searchable = $false; filterable = $true;  sortable = $false; facetable = $false; retrievable = $true }
         @{ name = 'chunk_id';                 type = 'Edm.String';                  key = $false; searchable = $false; filterable = $true;  sortable = $false; facetable = $false; retrievable = $true }
         @{ name = 'content';                  type = 'Edm.String';                  key = $false; searchable = $true;  filterable = $false; sortable = $false; facetable = $false; retrievable = $true; analyzer = 'standard.lucene' }
@@ -248,11 +269,11 @@ $indexBody = @{
             @{
                 name = 'semantic-config'
                 prioritizedFields = @{
-                    contentFields = @(
+                    prioritizedContentFields = @(
                         @{ fieldName = 'content' }
                     )
                     titleField     = @{ fieldName = 'metadata_storage_name' }
-                    keywordsFields = @()
+                    prioritizedKeywordsFields = @()
                 }
             }
         )
@@ -260,7 +281,7 @@ $indexBody = @{
 }
 
 if ($PSCmdlet.ShouldProcess($IndexName, 'Create index')) {
-    Invoke-SearchApi -Method PUT -Path "indexes/$IndexName?api-version=2024-07-01" -Body $indexBody
+    Invoke-SearchApi -Method PUT -Path "indexes/$($IndexName)?api-version=2024-07-01" -Body $indexBody
     Write-Host "  Index created." -ForegroundColor Green
 }
 
@@ -329,7 +350,7 @@ $skillsetBody = @{
             }
         )
         parameters = @{
-            projectionMode = 'generatedKeyAsId'
+            projectionMode = 'skipIndexingParentDocuments'
         }
     }
 }
@@ -364,6 +385,7 @@ $indexerBody = @{
         maxFailedItemsPerBatch = 10
         configuration         = @{
             dataToExtract             = 'contentAndMetadata'
+            indexedFileNameExtensions = '.md'
             parsingMode               = 'text'
             indexStorageMetadataOnlyForOversizedDocuments = $true
         }

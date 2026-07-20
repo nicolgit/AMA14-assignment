@@ -20,7 +20,7 @@ Prerequisiti: az login gia' effettuato; estensioni ml e rdbms-connect; client co
 
 param(
   [string]$RG = 'ama-mro-playground',
-  [string]$DeploymentName = 'hangarmind-dev'
+  [string]$DeploymentName = 'deploy'
 )
 
 $base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }

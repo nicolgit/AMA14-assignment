@@ -55,7 +55,7 @@ The environment is deployed from the subscription-scoped Bicep template in `bice
 
 	```powershell
 	az deployment sub create `
-	  --name hangarmind-dev `
+	  --name deploy `
 	  --location francecentral `
 	  --template-file .\bicep\deploy.bicep `
 	  --parameters deployerObjectId=$deployerObjectId `
@@ -74,7 +74,7 @@ The environment is deployed from the subscription-scoped Bicep template in `bice
 	.\upload.ps1 -RG ama-mro-playground
 	```
 
-	If the subscription deployment was created with a name different from `hangarmind-dev`, pass it explicitly:
+	If the subscription deployment was created with a name different from `deploy`, pass it explicitly:
 
 	```powershell
 	.\upload.ps1 -RG ama-mro-playground -DeploymentName "<deployment-name>"
@@ -83,7 +83,7 @@ The environment is deployed from the subscription-scoped Bicep template in `bice
 7. Verify the main deployment outputs and application endpoints:
 
 	```powershell
-	az deployment sub show -n hangarmind-dev --query properties.outputs
+	az deployment sub show -n deploy --query properties.outputs
 	```
 
 	Check `frontendSpaFqdn`, `backendApiFqdn`, `mlWorkspaceName`, `postgresFqdn`, `engineeringSearchEndpoint`, and `engineeringAiServicesEndpoint` to confirm that the expected services were created.
