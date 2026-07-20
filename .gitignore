@@ -11,3 +11,6 @@
 .venv/
 venv/
 __pycache__/
+
+# Bicep compiled ARM JSON (build artifacts)
+bicep/*.json

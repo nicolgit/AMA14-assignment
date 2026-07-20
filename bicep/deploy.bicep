@@ -78,7 +78,7 @@ param engineeringEmbeddingModelVersion string = '1'
   'standard2'
   'standard3'
 ])
-param engineeringSearchSku string = 'basic'
+param engineeringSearchSku string = 'standard'
 
 // username esempio adminuser@pg-amamrodeve0623
 @description('PostgreSQL administrator login name (local password auth).')
@@ -111,6 +111,9 @@ module datalake 'deploy-datalake.bicep' = {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
+    // Disable public access when private endpoints are deployed so all data-plane
+    // traffic stays within the VNet. Enable for dev/test without private networking.
+    publicNetworkAccess: deployPrivateEndpoints ? 'Disabled' : 'Enabled'
   }
 }
 
@@ -178,6 +181,7 @@ module engineeringAi 'deploy-ai.bicep' = if (deployEngineeringAi) {
     resourceNameSeed: resourceNameSeed
     tags: tags
     backendPrincipalId: backendIdentity.outputs.principalId
+    deployerPrincipalId: deployerObjectId
     chatDeploymentName: engineeringChatDeploymentName
     chatModelName: engineeringChatModelName
     chatModelVersion: engineeringChatModelVersion
@@ -186,6 +190,13 @@ module engineeringAi 'deploy-ai.bicep' = if (deployEngineeringAi) {
     embeddingModelName: engineeringEmbeddingModelName
     embeddingModelVersion: engineeringEmbeddingModelVersion
     searchSku: engineeringSearchSku
+    // Wire up the Data Lake so the Search managed identity receives Storage Blob Data Reader
+    // and a Shared Private Link is created to allow private indexing.
+    dataLakeStorageAccountName: datalake.outputs.storageAccountName
+    dataLakeStorageAccountId: datalake.outputs.storageAccountId
+    // Mirror the private-networking flag so AI Services and Search restrict public access
+    // when private endpoints are in use.
+    disablePublicNetworkAccess: deployPrivateEndpoints
   }
 }
 
@@ -322,6 +333,7 @@ output postgresFqdn string = deployPostgres ? postgres.?outputs.postgresFqdn ?? 
 output postgresDatabaseName string = deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''
 output engineeringAiServicesName string = deployEngineeringAi ? engineeringAi.?outputs.aiServicesName ?? '' : ''
 output engineeringAiServicesEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.aiServicesEndpoint ?? '' : ''
+output engineeringAiServicesId string = deployEngineeringAi ? engineeringAi.?outputs.aiServicesId ?? '' : ''
 output engineeringAiChatDeploymentName string = deployEngineeringAi ? engineeringAi.?outputs.chatDeploymentName ?? '' : ''
 output engineeringAiEmbeddingDeploymentName string = deployEngineeringAi ? engineeringAi.?outputs.embeddingDeploymentName ?? '' : ''
 output engineeringSpeechServiceName string = deployEngineeringAi ? engineeringAi.?outputs.speechServiceName ?? '' : ''
@@ -330,6 +342,7 @@ output engineeringSpeechRegion string = deployEngineeringAi ? engineeringAi.?out
 output engineeringSearchServiceName string = deployEngineeringAi ? engineeringAi.?outputs.searchServiceName ?? '' : ''
 output engineeringSearchEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.searchEndpoint ?? '' : ''
 output engineeringSearchIndexName string = deployEngineeringAi ? engineeringAi.?outputs.searchIndexName ?? '' : ''
+output engineeringSearchManagedIdentityPrincipalId string = deployEngineeringAi ? engineeringAi.?outputs.searchManagedIdentityPrincipalId ?? '' : ''
 output containerAppsEnvironmentName string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.containerAppsEnvironmentName ?? '' : ''
 output backendApiFqdn string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.backendFqdn ?? '' : ''
 output frontendSpaFqdn string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.frontendFqdn ?? '' : ''
