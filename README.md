@@ -21,3 +21,77 @@ Turn reactive, fragmented maintenance into a predictive, governed model along fo
 | Point-of-use parts availability | — | +34% |
 | EASA documentation effort | baseline | −55% |
 | First-time-fix rate | 71% | 89% |
+
+### Environment deployment instructions
+
+The environment is deployed from the subscription-scoped Bicep template in `bicep/deploy.bicep`. The template creates the resource group and provisions the HangarMind Azure environment.
+
+1. Sign in to Azure and select the target subscription:
+
+	```powershell
+	az login
+	az account set --subscription "<subscription-id-or-name>"
+	```
+
+2. Collect the Microsoft Entra values required by the deployment. The Bicep template uses them to grant the deployer access to storage, PostgreSQL administration, and the VPN Gateway profile download:
+
+	```powershell
+	$deployerObjectId = az ad signed-in-user show --query id -o tsv
+	$deployerPrincipalName = az ad signed-in-user show --query userPrincipalName -o tsv
+	```
+
+3. Validate the deployment with a `what-if` run before creating resources:
+
+	```powershell
+	az deployment sub what-if `
+	  --location francecentral `
+	  --template-file .\bicep\deploy.bicep `
+	  --parameters deployerObjectId=$deployerObjectId `
+						deployerPrincipalName=$deployerPrincipalName `
+						postgresAdminPassword="<strong-password>"
+	```
+
+4. Deploy the environment:
+
+	```powershell
+	az deployment sub create `
+	  --name hangarmind-dev `
+	  --location francecentral `
+	  --template-file .\bicep\deploy.bicep `
+	  --parameters deployerObjectId=$deployerObjectId `
+						deployerPrincipalName=$deployerPrincipalName `
+						postgresAdminPassword="<strong-password>"
+	```
+
+	The default resource group is `ama-mro-playground`. Override `resourceGroupName`, `location`, or any optional deployment flags only when you need a different environment shape.
+
+5. After the deployment completes, download the Azure VPN Client configuration from the deployed Virtual Network Gateway and connect your workstation to the P2S VPN. This is required because the environment uses private endpoints and disables public network access for several data-plane services.
+
+6. From the connected workstation, run the upload orchestrator. It creates and populates PostgreSQL tables, uploads C-MAPSS training data and maintenance documents to the Data Lake, and starts the Azure ML train/evaluate pipeline:
+
+	```powershell
+	cd .\powershell
+	.\upload.ps1 -RG ama-mro-playground
+	```
+
+7. If the Engineering Copilot RAG stack is enabled, approve the Search shared private link connections, then create the Azure AI Search data source, index, skillset, and indexer:
+
+	```powershell
+	$out = az deployment sub show -n hangarmind-dev --query properties.outputs -o json | ConvertFrom-Json
+
+	.\configure-search-index.ps1 `
+	  -SearchServiceName  $out.engineeringSearchServiceName.value `
+	  -SearchEndpoint     $out.engineeringSearchEndpoint.value `
+	  -StorageAccountName $out.dataLakeAccountName.value `
+	  -StorageAccountId   $out.dataLakeAccountId.value `
+	  -OpenAiEndpoint     $out.engineeringAiServicesEndpoint.value `
+	  -OpenAiResourceId   $out.engineeringAiServicesId.value
+	```
+
+8. Verify the main deployment outputs and application endpoints:
+
+	```powershell
+	az deployment sub show -n hangarmind-dev --query properties.outputs
+	```
+
+	Check `frontendSpaFqdn`, `backendApiFqdn`, `mlWorkspaceName`, `postgresFqdn`, `engineeringSearchEndpoint`, and `engineeringAiServicesEndpoint` to confirm that the expected services were created.
