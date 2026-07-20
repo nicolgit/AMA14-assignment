@@ -293,7 +293,7 @@ resource searchSplOpenAi 'Microsoft.Search/searchServices/sharedPrivateLinkResou
   name: 'spl-openai'
   properties: {
     privateLinkResourceId: aiServices.id
-    groupId: 'openAI'
+    groupId: 'openai_account'
     requestMessage: 'Azure AI Search requires access to Azure OpenAI for embedding generation'
   }
 }
