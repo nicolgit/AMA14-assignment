@@ -12,12 +12,15 @@ Esegue in sequenza:
   3. populate-train-data.ps1  -> carica i dati C-MAPSS + environment su Azure ML
   4. populate-maintenance-data.ps1 -> carica documenti e dati manutentivi sul Data Lake
   5. start-ml-pipeline.ps1    -> lancia la pipeline train -> evaluate
+  6. approva le Shared Private Link pending di Azure AI Search
+  7. configura indice, data source, skillset e indexer di Azure AI Search
 
-Prerequisiti: az login gia' effettuato; estensioni ml e rdbms-connect.
+Prerequisiti: az login gia' effettuato; estensioni ml e rdbms-connect; client connesso alla VPN P2S.
 #>
 
 param(
-  [string]$RG = 'ama-mro-playground'
+  [string]$RG = 'ama-mro-playground',
+  [string]$DeploymentName = 'hangarmind-dev'
 )
 
 $base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
@@ -27,3 +30,4 @@ $base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
 & "$base/populate-train-data.ps1" -RG $RG
 & "$base/populate-maintenance-data.ps1" -RG $RG
 & "$base/start-ml-pipeline.ps1" -RG $RG
+& "$base/configure-engineering-search.ps1" -RG $RG -DeploymentName $DeploymentName

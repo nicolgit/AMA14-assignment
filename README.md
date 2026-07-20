@@ -67,28 +67,20 @@ The environment is deployed from the subscription-scoped Bicep template in `bice
 
 5. After the deployment completes, download the Azure VPN Client configuration from the deployed Virtual Network Gateway and connect your workstation to the P2S VPN. This is required because the environment uses private endpoints and disables public network access for several data-plane services.
 
-6. From the connected workstation, run the upload orchestrator. It creates and populates PostgreSQL tables, uploads C-MAPSS training data and maintenance documents to the Data Lake, and starts the Azure ML train/evaluate pipeline:
+6. From the connected workstation, run the upload orchestrator. It creates and populates PostgreSQL tables, uploads C-MAPSS training data and maintenance documents to the Data Lake, starts the Azure ML train/evaluate pipeline, approves the pending Azure AI Search shared private link connections, and configures the Azure AI Search data source, index, skillset, and indexer:
 
 	```powershell
 	cd .\powershell
 	.\upload.ps1 -RG ama-mro-playground
 	```
 
-7. If the Engineering Copilot RAG stack is enabled, approve the Search shared private link connections, then create the Azure AI Search data source, index, skillset, and indexer:
+	If the subscription deployment was created with a name different from `hangarmind-dev`, pass it explicitly:
 
 	```powershell
-	$out = az deployment sub show -n hangarmind-dev --query properties.outputs -o json | ConvertFrom-Json
-
-	.\configure-search-index.ps1 `
-	  -SearchServiceName  $out.engineeringSearchServiceName.value `
-	  -SearchEndpoint     $out.engineeringSearchEndpoint.value `
-	  -StorageAccountName $out.dataLakeAccountName.value `
-	  -StorageAccountId   $out.dataLakeAccountId.value `
-	  -OpenAiEndpoint     $out.engineeringAiServicesEndpoint.value `
-	  -OpenAiResourceId   $out.engineeringAiServicesId.value
+	.\upload.ps1 -RG ama-mro-playground -DeploymentName "<deployment-name>"
 	```
 
-8. Verify the main deployment outputs and application endpoints:
+7. Verify the main deployment outputs and application endpoints:
 
 	```powershell
 	az deployment sub show -n hangarmind-dev --query properties.outputs
