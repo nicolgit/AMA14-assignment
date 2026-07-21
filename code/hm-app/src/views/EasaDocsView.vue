@@ -168,6 +168,23 @@ function statusClass(status: string | null): string {
   return `status-pill status-pill--${key}`
 }
 
+// Map a source file name (as returned by the RAG index) to its document title,
+// using the document list already loaded for the table.
+const docTitleByFile = computed(() => {
+  const map: Record<string, string> = {}
+  for (const d of documents.value) {
+    if (!d.storage_uri || !d.title) continue
+    const file = d.storage_uri.split('/').pop()
+    if (file) map[file] = d.title
+  }
+  return map
+})
+
+function titleForSource(source: string | null | undefined): string {
+  if (!source) return ''
+  return docTitleByFile.value[source] ?? ''
+}
+
 onMounted(loadDocuments)
 </script>
 
@@ -303,7 +320,12 @@ onMounted(loadDocuments)
             <div v-if="turn.references && turn.references.length" class="refs">
               <span class="refs-title">Sources</span>
               <ul class="refs-list">
-                <li v-for="(r, ri) in turn.references" :key="ri">{{ r.source }}</li>
+                <li v-for="(r, ri) in turn.references" :key="ri">
+                  <span class="ref-file">{{ r.source }}</span>
+                  <span v-if="titleForSource(r.source)" class="ref-doc-title">
+                    — {{ titleForSource(r.source) }}
+                  </span>
+                </li>
               </ul>
             </div>
           </div>
@@ -715,6 +737,14 @@ onMounted(loadDocuments)
   padding-left: 18px;
   font-size: 0.82rem;
   color: var(--text-h);
+}
+
+.ref-file {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.ref-doc-title {
+  color: var(--text);
 }
 
 @media (max-width: 768px) {

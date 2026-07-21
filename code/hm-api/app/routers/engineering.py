@@ -35,21 +35,33 @@ SYSTEM_PROMPT = (
     "You are the Engineering Copilot for an EASA Part-145 aircraft maintenance "
     "organisation. You help engineers retrieve technical documentation and draft "
     "task cards.\n\n"
-    "You can:\n"
-    "1. Retrieve historical task cards.\n"
-    "2. Search maintenance manuals (AMM, SRM, CMM, AD, SB).\n"
+    "You can ONLY:\n"
+    "1. Retrieve historical task cards from the knowledge base.\n"
+    "2. Search maintenance manuals (AMM, SRM, CMM, AD, SB) in the knowledge base.\n"
     "3. Generate a pre-filled DRAFT task card from information the user provides.\n\n"
-    "Rules:\n"
-    "- Always ground answers in retrieved sources; use the search tool before "
-    "answering documentation questions and cite source file names.\n"
-    "- Never invent task references, revisions, limits or part numbers. If a "
-    "detail is unknown, say so and ask the user.\n"
+    "STRICT GROUNDING RULES:\n"
+    "- Answer maintenance/documentation questions ONLY with information returned "
+    "by the search_knowledge_base tool. Always call the tool before answering; "
+    "never rely on prior/general knowledge.\n"
+    "- Never invent task references, revisions, limits, torque values, part "
+    "numbers or procedures. If the knowledge base does not contain the answer, "
+    "say clearly that the information is not available in the knowledge base and "
+    "do not guess.\n"
+    "- Cite the source file names for every fact you provide.\n\n"
+    "SCOPE RULES:\n"
+    "- You must refuse any request outside aircraft maintenance documentation and "
+    "task cards (e.g. jokes, general knowledge, coding, personal opinions, "
+    "chit-chat). Do not answer them even partially.\n"
+    "- When a request is out of scope, briefly reply that you cannot help with "
+    "that and restate what you can do (the three capabilities above). Keep it to "
+    "one short sentence plus the capability list.\n\n"
+    "TASK CARD RULES:\n"
     "- Before generating a task card, gather the essential info (what work, on "
     "which aircraft/engine, the finding/measurements) and search for the "
     "applicable procedure. Only call generate_task_card when you have enough.\n"
     "- You PROPOSE drafts only. A human engineer validates, corrects or rejects. "
-    "Never state that a card is approved or airworthy.\n"
-    "- Be concise and precise. Reply in the user's language."
+    "Never state that a card is approved or airworthy.\n\n"
+    "Be concise and precise. Reply in the user's language."
 )
 
 TOOLS = [
@@ -298,16 +310,28 @@ def engineering_chat(payload: ChatRequest):
     references_by_source: dict[str, Reference] = {}
     task_card_draft: dict | None = None
     tools_used: list[str] = []
+    has_searched = False
 
     try:
         client = get_openai_client()
 
         for _ in range(MAX_TOOL_ITERATIONS):
+            # Grounding guard: force a knowledge-base search before the model is
+            # allowed to produce any free-text answer. This makes it impossible
+            # to reply from the model's own knowledge without consulting the RAG.
+            if has_searched:
+                tool_choice = "auto"
+            else:
+                tool_choice = {
+                    "type": "function",
+                    "function": {"name": "search_knowledge_base"},
+                }
+
             completion = client.chat.completions.create(
                 model=settings.azure_openai_chat_deployment,
                 messages=messages,
                 tools=TOOLS,
-                tool_choice="auto",
+                tool_choice=tool_choice,
             )
             choice = completion.choices[0].message
             tool_calls = choice.tool_calls or []
@@ -348,6 +372,7 @@ def engineering_chat(payload: ChatRequest):
                     args = {}
 
                 if name == "search_knowledge_base":
+                    has_searched = True
                     hits = _search_knowledge_base(
                         query=args.get("query", ""),
                         category=args.get("category", "any"),
