@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
+import MarkdownViewer from '../components/MarkdownViewer.vue'
 import { API_BASE_URL } from '../config'
 
 const props = defineProps<{ docid: string }>()
@@ -78,8 +79,7 @@ onMounted(loadDocument)
           <p class="meta-uri">{{ doc.storage_uri }}</p>
         </header>
 
-        <!-- Markdown shown as plain text for the PoC (no rendering library yet). -->
-        <pre class="doc-content">{{ content }}</pre>
+        <MarkdownViewer :source="content" class="doc-content" />
       </template>
     </section>
   </div>
@@ -156,14 +156,7 @@ onMounted(loadDocument)
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--social-bg);
-  color: var(--text-h);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-x: auto;
+  background: var(--bg);
 }
 
 @media (max-width: 768px) {

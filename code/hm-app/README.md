@@ -20,6 +20,7 @@ npm -v
 cd code/hm-app
 
 # Install dependencies
+npm config set registry https://packagefeedproxy.microsoft.io/npm/
 npm install
 ```
 
