@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
-// import { API_BASE_URL } from '../config'
+import { API_BASE_URL } from '../config'
 
 interface KbDocument {
-  doc_id: string
+  document_id: string
   title: string
-  doc_type: 'AMM' | 'SRM' | 'CMM' | 'AD' | 'SB' | 'Task Card'
-  ata_chapter: string | null
+  type: string | null
   revision: string | null
-  effective_date: string | null
-  source_file: string | null
-  status: 'indexed' | 'processing' | 'failed'
+  date: string | null
+  storage_uri: string | null
+  status: string | null
 }
 
 const documents = ref<KbDocument[]>([])
@@ -27,7 +26,7 @@ const filteredDocuments = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return documents.value
   return documents.value.filter((d) =>
-    [d.doc_id, d.title, d.doc_type, d.ata_chapter, d.revision, d.source_file]
+    [d.document_id, d.title, d.type, d.revision, d.storage_uri]
       .filter(Boolean)
       .some((field) => String(field).toLowerCase().includes(q)),
   )
@@ -59,138 +58,22 @@ function toggleMic() {
   // Voice input placeholder — no behaviour yet.
 }
 
-const FAKE_DOCUMENTS: KbDocument[] = [
-  {
-    doc_id: 'AMM-72-00-00',
-    title: 'Engine — General, Description and Operation',
-    doc_type: 'AMM',
-    ata_chapter: '72-00',
-    revision: 'Rev 42',
-    effective_date: '2025-11-01',
-    source_file: 'AMM-Aircraft-maintenance-manual-sample-amm-engine.pdf',
-    status: 'indexed',
-  },
-  {
-    doc_id: 'AMM-72-30-00',
-    title: 'Compressor Section — Removal / Installation',
-    doc_type: 'AMM',
-    ata_chapter: '72-30',
-    revision: 'Rev 42',
-    effective_date: '2025-11-01',
-    source_file: 'amm-72-30-compressor.pdf',
-    status: 'indexed',
-  },
-  {
-    doc_id: 'SRM-53-10-01',
-    title: 'Fuselage Skin Repair — Allowable Damage',
-    doc_type: 'SRM',
-    ata_chapter: '53-10',
-    revision: 'Rev 18',
-    effective_date: '2025-06-15',
-    source_file: 'srm-53-10-skin.pdf',
-    status: 'indexed',
-  },
-  {
-    doc_id: 'CMM-32-41-07',
-    title: 'Brake Control Unit — Component Maintenance',
-    doc_type: 'CMM',
-    ata_chapter: '32-41',
-    revision: 'Rev 9',
-    effective_date: '2024-12-02',
-    source_file: 'cmm-32-41-bcu.pdf',
-    status: 'indexed',
-  },
-  {
-    doc_id: 'AD-2025-0142',
-    title: 'Airworthiness Directive — HP Turbine Blade Inspection',
-    doc_type: 'AD',
-    ata_chapter: '72-50',
-    revision: 'Initial',
-    effective_date: '2025-09-20',
-    source_file: 'ad-2025-0142.pdf',
-    status: 'indexed',
-  },
-  {
-    doc_id: 'SB-72-A0231',
-    title: 'Service Bulletin — Fuel Nozzle Upgrade',
-    doc_type: 'SB',
-    ata_chapter: '72-40',
-    revision: 'Rev 2',
-    effective_date: '2025-03-10',
-    source_file: 'sb-72-a0231.pdf',
-    status: 'processing',
-  },
-  {
-    doc_id: 'TC-0001',
-    title: 'Task Card — Borescope Inspection HP Compressor',
-    doc_type: 'Task Card',
-    ata_chapter: '72-30',
-    revision: 'Rev 3',
-    effective_date: '2025-08-01',
-    source_file: 'task-card-0001.md',
-    status: 'indexed',
-  },
-  {
-    doc_id: 'TC-0002',
-    title: 'Task Card — Fan Blade Lubrication',
-    doc_type: 'Task Card',
-    ata_chapter: '72-20',
-    revision: 'Rev 1',
-    effective_date: '2025-07-11',
-    source_file: 'task-card-0002.md',
-    status: 'indexed',
-  },
-  {
-    doc_id: 'TC-0003',
-    title: 'Task Card — Oil System Filter Replacement',
-    doc_type: 'Task Card',
-    ata_chapter: '79-20',
-    revision: 'Rev 5',
-    effective_date: '2025-05-22',
-    source_file: 'task-card-0003.md',
-    status: 'indexed',
-  },
-  {
-    doc_id: 'TC-0004',
-    title: 'Task Card — EGT Sensor Functional Check',
-    doc_type: 'Task Card',
-    ata_chapter: '77-20',
-    revision: 'Rev 2',
-    effective_date: '2025-04-18',
-    source_file: 'task-card-0004.md',
-    status: 'indexed',
-  },
-  {
-    doc_id: 'TC-0005',
-    title: 'Task Card — Igniter Plug Continuity Test',
-    doc_type: 'Task Card',
-    ata_chapter: '74-20',
-    revision: 'Rev 1',
-    effective_date: '2025-02-05',
-    source_file: 'task-card-0005.md',
-    status: 'failed',
-  },
-  {
-    doc_id: 'CMM-24-31-02',
-    title: 'Generator Control Unit — Component Maintenance',
-    doc_type: 'CMM',
-    ata_chapter: '24-31',
-    revision: 'Rev 6',
-    effective_date: '2024-10-14',
-    source_file: 'cmm-24-31-gcu.pdf',
-    status: 'indexed',
-  },
-]
-
 async function loadDocuments() {
   loading.value = true
   error.value = ''
   try {
-    // TODO: replace with real call, e.g.
-    // const res = await fetch(`${API_BASE_URL}/v1/engineering/documents`)
-    // documents.value = await res.json()
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    documents.value = FAKE_DOCUMENTS
+    const res = await fetch(`${API_BASE_URL}/v1/doc`)
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        if (body?.detail) detail = body.detail
+      } catch {
+        /* response had no JSON body */
+      }
+      throw new Error(detail)
+    }
+    documents.value = await res.json()
     currentPage.value = 1
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
@@ -199,8 +82,14 @@ async function loadDocuments() {
   }
 }
 
-function docTypeClass(type: KbDocument['doc_type']): string {
-  return `doc-type doc-type--${type.replace(/\s+/g, '').toLowerCase()}`
+function docTypeClass(type: string | null): string {
+  const key = (type ?? '').replace(/\s+/g, '').toLowerCase()
+  return `doc-type doc-type--${key}`
+}
+
+function statusClass(status: string | null): string {
+  const key = (status ?? '').trim().toLowerCase()
+  return `status-pill status-pill--${key}`
 }
 
 onMounted(loadDocuments)
@@ -250,24 +139,29 @@ onMounted(loadDocuments)
               <th>Document ID</th>
               <th>Title</th>
               <th>Type</th>
-              <th>ATA</th>
               <th>Revision</th>
-              <th>Effective Date</th>
-              <th>Source</th>
+              <th>Date</th>
+              <th>Storage URI</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="doc in pagedDocuments" :key="doc.doc_id">
-              <td class="doc-id">{{ doc.doc_id }}</td>
+            <tr v-for="doc in pagedDocuments" :key="doc.document_id">
+              <td class="doc-id">{{ doc.document_id }}</td>
               <td>{{ doc.title }}</td>
-              <td><span :class="docTypeClass(doc.doc_type)">{{ doc.doc_type }}</span></td>
-              <td>{{ doc.ata_chapter }}</td>
+              <td><span :class="docTypeClass(doc.type)">{{ doc.type }}</span></td>
               <td>{{ doc.revision }}</td>
-              <td>{{ doc.effective_date }}</td>
-              <td class="doc-source">{{ doc.source_file }}</td>
+              <td>{{ doc.date }}</td>
+              <td class="doc-source">
+                <router-link
+                  class="doc-uri-link"
+                  :to="{ name: 'easa-doc-detail', params: { docid: doc.document_id } }"
+                >
+                  {{ doc.storage_uri }}
+                </router-link>
+              </td>
               <td>
-                <span :class="`status-pill status-pill--${doc.status}`">
+                <span :class="statusClass(doc.status)">
                   {{ doc.status }}
                 </span>
               </td>
@@ -467,6 +361,16 @@ onMounted(loadDocuments)
   font-size: 0.82rem;
 }
 
+.doc-uri-link {
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.doc-uri-link:hover {
+  text-decoration: underline;
+}
+
 .doc-type {
   display: inline-block;
   padding: 2px 8px;
@@ -505,19 +409,14 @@ onMounted(loadDocuments)
   text-transform: capitalize;
 }
 
-.status-pill--indexed {
+.status-pill--published {
   color: #1a7f37;
   background: rgba(26, 127, 55, 0.12);
 }
 
-.status-pill--processing {
+.status-pill--draft {
   color: #b57400;
   background: rgba(245, 166, 35, 0.12);
-}
-
-.status-pill--failed {
-  color: #e5484d;
-  background: rgba(229, 72, 77, 0.12);
 }
 
 .pager {
