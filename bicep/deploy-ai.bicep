@@ -43,8 +43,8 @@ param chatModelVersion string = '2026-07-09'
 ])
 param chatDeploymentSku string = 'DataZoneStandard'
 
-@description('Tokens-per-minute capacity for the chat model deployment.')
-param chatDeploymentCapacity int = 10
+@description('Tokens-per-minute capacity for the chat model deployment (units of 1K TPM; 20 = 20K TPM).')
+param chatDeploymentCapacity int = 30
 
 @description('Embedding model deployment name used by ingestion and RAG.')
 param embeddingDeploymentName string = 'text-embedding-3-large'
