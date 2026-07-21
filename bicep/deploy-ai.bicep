@@ -312,6 +312,10 @@ resource searchSplStorageBlob 'Microsoft.Search/searchServices/sharedPrivateLink
 }
 
 // Outbound private link to the Azure AI Services embedding endpoint.
+// NOTE: Azure AI Search serializes shared private link operations and does not
+// support creating multiple of them in parallel. The explicit dependsOn forces
+// this resource to be created after spl-storage-blob to avoid the
+// "There was a conflicting update" / ResourceNotFound deployment error.
 resource searchSplCognitiveServices 'Microsoft.Search/searchServices/sharedPrivateLinkResources@2023-11-01' = {
   parent: search
   name: 'spl-cognitiveservices'
@@ -320,6 +324,9 @@ resource searchSplCognitiveServices 'Microsoft.Search/searchServices/sharedPriva
     groupId: 'cognitiveservices_account'
     requestMessage: 'Azure AI Search requires access to Azure AI Services for embedding generation'
   }
+  dependsOn: [
+    searchSplStorageBlob
+  ]
 }
 
 output aiServicesName string = aiServices.name
