@@ -86,6 +86,10 @@ function handleClick(fn: MroFunction) {
     router.push({ name: 'supply-decision' })
     return
   }
+  if (fn.id === 'easa-docs') {
+    router.push({ name: 'easa-docs' })
+    return
+  }
   if (!fn.aiPowered) {
     alert(`"${fn.title}" is a placeholder module — not yet implemented.`)
   }

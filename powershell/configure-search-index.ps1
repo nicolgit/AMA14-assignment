@@ -388,6 +388,13 @@ $indexerBody = @{
             indexedFileNameExtensions = '.md'
             parsingMode               = 'text'
             indexStorageMetadataOnlyForOversizedDocuments = $true
+            # Force the indexer/skillset to run in the search service's private
+            # execution environment. Shared Private Links (Search -> AI Services
+            # for embeddings) are NOT used from the multitenant environment, which
+            # causes the AzureOpenAIEmbeddingSkill to egress publicly and fail with
+            # 403 "Public access is disabled" when the AI account has public access
+            # off. Required for private-by-design indexing.
+            executionEnvironment      = 'private'
         }
     }
     fieldMappings = @(
