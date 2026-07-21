@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
+import MarkdownViewer from '../components/MarkdownViewer.vue'
 import { API_BASE_URL } from '../config'
 
 interface KbDocument {
@@ -180,9 +181,26 @@ const docTitleByFile = computed(() => {
   return map
 })
 
+// Map a source file name to its document_id, so chat sources can link to the
+// document detail view.
+const docIdByFile = computed(() => {
+  const map: Record<string, string> = {}
+  for (const d of documents.value) {
+    if (!d.storage_uri) continue
+    const file = d.storage_uri.split('/').pop()
+    if (file) map[file] = d.document_id
+  }
+  return map
+})
+
 function titleForSource(source: string | null | undefined): string {
   if (!source) return ''
   return docTitleByFile.value[source] ?? ''
+}
+
+function docIdForSource(source: string | null | undefined): string {
+  if (!source) return ''
+  return docIdByFile.value[source] ?? ''
 }
 
 onMounted(loadDocuments)
@@ -310,18 +328,30 @@ onMounted(loadDocuments)
           :class="['chat-msg', turn.role === 'user' ? 'chat-msg--user' : 'chat-msg--ai']"
         >
           <div class="chat-bubble">
-            <p class="chat-text">{{ turn.content }}</p>
+            <MarkdownViewer
+              v-if="turn.role === 'assistant'"
+              :source="turn.content"
+              class="chat-text"
+            />
+            <p v-else class="chat-text">{{ turn.content }}</p>
 
             <div v-if="turn.taskCardMarkdown" class="task-card">
               <div class="task-card-head">📝 Draft task card — pending review</div>
-              <pre class="task-card-body">{{ turn.taskCardMarkdown }}</pre>
+              <MarkdownViewer :source="turn.taskCardMarkdown" class="task-card-body" />
             </div>
 
             <div v-if="turn.references && turn.references.length" class="refs">
               <span class="refs-title">Sources</span>
               <ul class="refs-list">
                 <li v-for="(r, ri) in turn.references" :key="ri">
-                  <span class="ref-file">{{ r.source }}</span>
+                  <router-link
+                    v-if="docIdForSource(r.source)"
+                    class="ref-file ref-file--link"
+                    :to="{ name: 'easa-doc-detail', params: { docid: docIdForSource(r.source) } }"
+                  >
+                    {{ r.source }}
+                  </router-link>
+                  <span v-else class="ref-file">{{ r.source }}</span>
                   <span v-if="titleForSource(r.source)" class="ref-doc-title">
                     — {{ titleForSource(r.source) }}
                   </span>
@@ -707,15 +737,9 @@ onMounted(loadDocuments)
 }
 
 .task-card-body {
-  margin: 0;
   padding: 12px;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
+  font-size: 0.82rem;
   background: var(--social-bg);
-  color: var(--text-h);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .refs {
@@ -741,6 +765,15 @@ onMounted(loadDocuments)
 
 .ref-file {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.ref-file--link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ref-file--link:hover {
+  text-decoration: underline;
 }
 
 .ref-doc-title {
