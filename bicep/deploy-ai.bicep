@@ -81,10 +81,12 @@ param dataLakeStorageAccountId string = ''
 param disablePublicNetworkAccess bool = false
 
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
-var uniqueSuffix = uniqueString(resourceGroup().id)
-var aiServicesName = toLower(take('ai${nameSeedSafe}${uniqueSuffix}', 64))
-var speechServiceName = toLower(take('spch${nameSeedSafe}${uniqueSuffix}', 64))
-var searchServiceName = toLower(take('srch${nameSeedSafe}${uniqueSuffix}', 60))
+// Deterministic names aligned with the Data Lake account (`lake${nameSeedSafe}`)
+// so endpoints are predictable at deploy time without a random suffix. The
+// name seed already carries a date component for global-uniqueness headroom.
+var aiServicesName = toLower(take('ai${nameSeedSafe}', 64))
+var speechServiceName = toLower(take('spch${nameSeedSafe}', 64))
+var searchServiceName = toLower(take('srch${nameSeedSafe}', 60))
 
 var hasBackendPrincipal = !empty(backendPrincipalId)
 var hasDeployerPrincipal = !empty(deployerPrincipalId)
