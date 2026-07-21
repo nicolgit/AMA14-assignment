@@ -35,6 +35,7 @@ cd code/hm-api
 # Start with hot-reload - DEVELOPMENT
 $env:CORS_ORIGINS = "http://localhost:5173"
 $env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0721.postgres.database.azure.com:5432/hangarmind"
+$env:BLOB_STORAGE_URL = "https://lakeamamrodeve0721.blob.core.windows.net"
 
 uvicorn app.main:app --reload --port 8080
 
@@ -66,6 +67,14 @@ When `DATABASE_URL` is **not** set, the app authenticates to Azure Database for 
 | `POSTGRES_PORT` | Optional, defaults to `5432` |
 
 `sslmode=require` is enforced automatically in this mode.
+
+## Blob storage (document content)
+
+The `GET /v1/doc/{id}/blob` endpoint streams the markdown content of a document from Azure Blob Storage / ADLS Gen2. The document `storage_uri` metadata (`<container>/<blob-path>`) is resolved against the account blob endpoint configured via `BLOB_STORAGE_URL`. Authentication uses `DefaultAzureCredential` (your `az login` identity locally, the managed identity in production).
+
+| Variable | Purpose |
+|----------|---------|
+| `BLOB_STORAGE_URL` | Account blob endpoint, e.g. `https://lakexxxx.blob.core.windows.net` |
 
 ## CORS (frontend access)
 

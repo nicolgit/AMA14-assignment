@@ -23,6 +23,9 @@ class Settings:
         self.postgres_user = os.getenv("POSTGRES_USER")
         self.postgres_port = int(os.getenv("POSTGRES_PORT", "5432"))
         self.azure_client_id = os.getenv("AZURE_CLIENT_ID")
+        # Account blob endpoint used to resolve document `storage_uri` values,
+        # e.g. "https://lakexxxx.blob.core.windows.net".
+        self.blob_storage_url = os.getenv("BLOB_STORAGE_URL")
 
     @property
     def use_entra_auth(self) -> bool:
