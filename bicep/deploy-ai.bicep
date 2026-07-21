@@ -190,6 +190,14 @@ resource search 'Microsoft.Search/searchServices@2023-11-01' = {
     hostingMode: 'default'
     publicNetworkAccess: disablePublicNetworkAccess ? 'disabled' : 'enabled'
     disableLocalAuth: false
+    // Allow both Entra RBAC and API keys on the data plane. Without this the
+    // service defaults to apiKeyOnly and rejects managed-identity/token auth
+    // with 403, even though RBAC roles are assigned below.
+    authOptions: {
+      aadOrApiKey: {
+        aadAuthFailureMode: 'http403'
+      }
+    }
     networkRuleSet: {
       ipRules: []
     }

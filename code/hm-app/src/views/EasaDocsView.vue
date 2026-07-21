@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import { API_BASE_URL } from '../config'
 
@@ -21,6 +21,37 @@ const searchQuery = ref('')
 
 const pageSize = 10
 const currentPage = ref(1)
+
+// View toggles between the document list and the Engineering Copilot chat.
+type ViewMode = 'list' | 'chat'
+const mode = ref<ViewMode>('list')
+
+interface ChatReference {
+  source: string
+  path?: string | null
+  snippet?: string | null
+}
+
+interface ChatTurn {
+  role: 'user' | 'assistant'
+  content: string
+  references?: ChatReference[]
+  taskCardMarkdown?: string | null
+}
+
+const chatTurns = ref<ChatTurn[]>([])
+const chatLoading = ref(false)
+const chatError = ref('')
+const chatLog = ref<HTMLElement | null>(null)
+
+// Auto-scroll the chat log to the bottom whenever a turn is added.
+watch(
+  () => [chatTurns.value.length, chatLoading.value],
+  async () => {
+    await nextTick()
+    chatLog.value?.scrollTo({ top: chatLog.value.scrollHeight })
+  },
+)
 
 const filteredDocuments = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
@@ -49,9 +80,54 @@ function nextPage() {
   if (currentPage.value < totalPages.value) currentPage.value++
 }
 
-function runSearch() {
-  // AI-assisted search will be wired to the engineering RAG endpoint later.
-  currentPage.value = 1
+function toggleMode() {
+  mode.value = mode.value === 'list' ? 'chat' : 'list'
+}
+
+// Pressing Enter (or the primary button) starts/continues the chat.
+function onSubmit() {
+  const text = searchQuery.value.trim()
+  if (!text || chatLoading.value) return
+  mode.value = 'chat'
+  sendChat(text)
+}
+
+async function sendChat(text: string) {
+  chatError.value = ''
+  chatTurns.value.push({ role: 'user', content: text })
+  searchQuery.value = ''
+  chatLoading.value = true
+  try {
+    const payload = {
+      messages: chatTurns.value.map((t) => ({ role: t.role, content: t.content })),
+    }
+    const res = await fetch(`${API_BASE_URL}/v1/engineering/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        if (body?.detail) detail = body.detail
+      } catch {
+        /* response had no JSON body */
+      }
+      throw new Error(detail)
+    }
+    const data = await res.json()
+    chatTurns.value.push({
+      role: 'assistant',
+      content: data.reply ?? '',
+      references: data.references ?? [],
+      taskCardMarkdown: data.task_card_draft?.markdown ?? null,
+    })
+  } catch (err) {
+    chatError.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    chatLoading.value = false
+  }
 }
 
 function toggleMic() {
@@ -112,17 +188,26 @@ onMounted(loadDocuments)
           v-model="searchQuery"
           class="search-input"
           type="text"
-          placeholder="e.g. borescope inspection procedure for HP compressor"
-          @keyup.enter="runSearch"
+          :placeholder="
+            mode === 'chat'
+              ? 'Ask the Engineering Copilot…'
+              : 'e.g. borescope inspection procedure for HP compressor'
+          "
+          @keyup.enter="onSubmit"
         />
         <button class="mic-btn" title="Voice input (coming soon)" @click="toggleMic">
           🎙️
         </button>
-        <button class="search-btn" @click="runSearch">Search</button>
+        <button class="toggle-btn" type="button" @click="toggleMode">
+          {{ mode === 'list' ? '💬 Chat' : '📋 Documents' }}
+        </button>
+        <button class="search-btn" type="button" @click="onSubmit">
+          {{ mode === 'chat' ? 'Send' : 'Ask AI' }}
+        </button>
       </div>
     </section>
 
-    <section class="content">
+    <section v-if="mode === 'list'" class="content">
       <div class="content-head">
         <h3 class="content-title">Knowledge Base Documents</h3>
         <span class="content-count">{{ filteredDocuments.length }} documents</span>
@@ -183,6 +268,53 @@ onMounted(loadDocuments)
           </button>
         </nav>
       </template>
+    </section>
+
+    <section v-else class="chat">
+      <div class="content-head">
+        <h3 class="content-title">
+          <span class="ai-badge">AI</span> Engineering Copilot
+        </h3>
+        <button class="link-btn" type="button" @click="mode = 'list'">
+          ← Back to documents
+        </button>
+      </div>
+
+      <div ref="chatLog" class="chat-log">
+        <p v-if="chatTurns.length === 0 && !chatLoading" class="chat-empty">
+          Ask about a procedure, retrieve a historical task card, or request a
+          pre-filled draft task card. The copilot cites its sources and proposes
+          drafts for a human engineer to validate.
+        </p>
+
+        <div
+          v-for="(turn, i) in chatTurns"
+          :key="i"
+          :class="['chat-msg', turn.role === 'user' ? 'chat-msg--user' : 'chat-msg--ai']"
+        >
+          <div class="chat-bubble">
+            <p class="chat-text">{{ turn.content }}</p>
+
+            <div v-if="turn.taskCardMarkdown" class="task-card">
+              <div class="task-card-head">📝 Draft task card — pending review</div>
+              <pre class="task-card-body">{{ turn.taskCardMarkdown }}</pre>
+            </div>
+
+            <div v-if="turn.references && turn.references.length" class="refs">
+              <span class="refs-title">Sources</span>
+              <ul class="refs-list">
+                <li v-for="(r, ri) in turn.references" :key="ri">{{ r.source }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="chatLoading" class="chat-msg chat-msg--ai">
+          <div class="chat-bubble chat-bubble--loading">Thinking…</div>
+        </div>
+
+        <p v-if="chatError" class="state state--error">⚠️ {{ chatError }}</p>
+      </div>
     </section>
   </div>
 </template>
@@ -444,6 +576,145 @@ onMounted(loadDocuments)
 .pager-info {
   font-size: 0.88rem;
   color: var(--text);
+}
+
+/* Toggle button (chat / documents) */
+.toggle-btn {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.toggle-btn:hover {
+  filter: brightness(1.03);
+}
+
+/* Chat */
+.chat {
+  width: 100%;
+}
+
+.link-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.chat-empty {
+  font-size: 0.92rem;
+  color: var(--text);
+  max-width: 640px;
+  line-height: 1.5;
+}
+
+.chat-msg {
+  display: flex;
+}
+
+.chat-msg--user {
+  justify-content: flex-end;
+}
+
+.chat-msg--ai {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.chat-msg--user .chat-bubble {
+  background: var(--accent);
+  border-color: var(--accent-border);
+  color: #fff;
+}
+
+.chat-bubble--loading {
+  color: var(--text);
+  font-style: italic;
+}
+
+.chat-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+.task-card {
+  margin-top: 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.task-card-head {
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 8px 12px;
+}
+
+.task-card-body {
+  margin: 0;
+  padding: 12px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--social-bg);
+  color: var(--text-h);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.refs {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.refs-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text);
+}
+
+.refs-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: var(--text-h);
 }
 
 @media (max-width: 768px) {

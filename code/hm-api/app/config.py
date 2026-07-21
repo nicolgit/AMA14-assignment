@@ -26,6 +26,17 @@ class Settings:
         # Account blob endpoint used to resolve document `storage_uri` values,
         # e.g. "https://lakexxxx.blob.core.windows.net".
         self.blob_storage_url = os.getenv("BLOB_STORAGE_URL")
+        # Engineering Copilot: Azure OpenAI (chat) + Azure AI Search (RAG).
+        # Both authenticate with Entra (no keys; the accounts have local auth off).
+        self.azure_openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.azure_openai_chat_deployment = os.getenv(
+            "AZURE_OPENAI_CHAT_DEPLOYMENT", "gpt-5-6-sol"
+        )
+        self.azure_openai_api_version = os.getenv(
+            "AZURE_OPENAI_API_VERSION", "2024-10-21"
+        )
+        self.azure_search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT")
+        self.azure_search_index = os.getenv("AZURE_SEARCH_INDEX", "engineering-docs")
 
     @property
     def use_entra_auth(self) -> bool:

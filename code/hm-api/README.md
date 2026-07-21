@@ -36,6 +36,10 @@ cd code/hm-api
 $env:CORS_ORIGINS = "http://localhost:5173"
 $env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0721.postgres.database.azure.com:5432/hangarmind"
 $env:BLOB_STORAGE_URL = "https://lakeamamrodeve0721.blob.core.windows.net"
+$env:AZURE_OPENAI_ENDPOINT = "https://aiamamrodeve07216y6267qmczs3i.cognitiveservices.azure.com"
+$env:AZURE_OPENAI_CHAT_DEPLOYMENT = "gpt-5-6-sol"
+$env:AZURE_SEARCH_ENDPOINT = "https://srchamamrodeve07216y6267qmczs3i.search.windows.net"
+$env:AZURE_SEARCH_INDEX = "engineering-docs"
 
 uvicorn app.main:app --reload --port 8080
 
@@ -76,8 +80,20 @@ The `GET /v1/doc/{id}/blob` endpoint streams the markdown content of a document 
 |----------|---------|
 | `BLOB_STORAGE_URL` | Account blob endpoint, e.g. `https://lakexxxx.blob.core.windows.net` |
 
-## CORS (frontend access)
+## Engineering Copilot (Azure OpenAI + AI Search)
 
+The `POST /v1/engineering/chat` endpoint runs a server-side function-calling agent. The chat model (Azure OpenAI) decides when to retrieve documentation from the Azure AI Search RAG index (`search_knowledge_base`) and when to draft a task card (`generate_task_card`). Both services authenticate with `DefaultAzureCredential` (Entra only — local auth is disabled on the accounts). Requires the P2S VPN, since both endpoints are on private networks.
+
+| Variable | Purpose |
+|----------|---------|
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint, e.g. `https://aiamamrodeve07216y6267qmczs3i.cognitiveservices.azure.com` |
+| `AZURE_OPENAI_CHAT_DEPLOYMENT` | Chat deployment name (default `gpt-5-6-sol`) |
+| `AZURE_OPENAI_API_VERSION` | Optional, defaults to `2024-10-21` |
+| `AZURE_SEARCH_ENDPOINT` | Azure AI Search endpoint, e.g. `https://srchamamrodeve07216y6267qmczs3i.search.windows.net` |
+| `AZURE_SEARCH_INDEX` | Index name (default `engineering-docs`) |
+
+The request body is `{ "messages": [{ "role": "user", "content": "..." }] }`; the response returns `reply`, `references` (cited sources), an optional `task_card_draft` (JSON + rendered markdown), and `tools_used`.
+## CORS (frontend access)
 The SPA (`hm-app`) runs on a different origin, so cross-origin requests must be allowed. Configure the allowed origins via the `CORS_ORIGINS` environment variable (comma-separated). It defaults to the local Vite dev server.
 
 | Variable | Purpose |
