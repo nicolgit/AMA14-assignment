@@ -16,12 +16,16 @@ here is an approval or a Certificate of Release to Service.
 
 import json
 import logging
+from datetime import date, datetime
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 from app.ai import get_openai_client, get_search_client
+from app.blob import get_blob_service_client
 from app.config import get_settings
+from app.db import get_engine
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +34,12 @@ router = APIRouter()
 MAX_TOOL_ITERATIONS = 5
 SEARCH_TOP_DEFAULT = 5
 VECTOR_K = 50
+
+# Draft task cards created from the Engineering Copilot land in the same
+# ADLS Gen2 container as the seeded documents, under a dedicated ``drafts/``
+# path so they are easy to tell apart from published, human-authored data.
+DRAFT_CONTAINER = "engineering-docs"
+DRAFT_PATH = "drafts"
 
 SYSTEM_PROMPT = (
     "You are the Engineering Copilot for an EASA Part-145 aircraft maintenance "
@@ -169,6 +179,17 @@ class ChatResponse(BaseModel):
     references: list[Reference] = []
     task_card_draft: dict | None = None
     tools_used: list[str] = []
+
+
+class CreateTaskCardRequest(BaseModel):
+    title: str = Field(min_length=1, description="Task card title.")
+    markdown: str = Field(min_length=1, description="Rendered task card markdown.")
+
+
+class CreateTaskCardResponse(BaseModel):
+    document_id: str
+    storage_uri: str
+    status: str
 
 
 # ---------------------------------------------------------------------------
@@ -414,3 +435,93 @@ def engineering_chat(payload: ChatRequest):
     except Exception as exc:  # surface a clean 503 instead of a 500 stack trace
         logger.exception("engineering chat failed")
         raise HTTPException(status_code=503, detail=f"engineering copilot unavailable: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
+# Task-card creation (promote a draft into a reviewable document)
+# ---------------------------------------------------------------------------
+
+
+def _unique_document_id(conn, base_id: str) -> str:
+    """Return ``base_id`` or, if it already exists, a suffixed variant.
+
+    The requested naming scheme (``task-YYYY-MM-DD-HH-MM``) has minute
+    resolution, so two cards created within the same minute would collide on the
+    primary key. We append ``-2``, ``-3``, … until we find a free id.
+    """
+    check = text("SELECT 1 FROM document WHERE document_id = :id")
+    candidate = base_id
+    suffix = 2
+    while conn.execute(check, {"id": candidate}).first() is not None:
+        candidate = f"{base_id}-{suffix}"
+        suffix += 1
+    return candidate
+
+
+@router.post("/engineering/task-card", response_model=CreateTaskCardResponse)
+def create_task_card(payload: CreateTaskCardRequest):
+    """Persist a draft task card as a document.
+
+    Writes the markdown to Blob Storage and inserts a matching row in the
+    ``document`` table with ``status = 'draft'``. The new ``document_id`` lets
+    the SPA open the card in the document detail view straight away.
+    """
+    now = datetime.now()
+    base_id = f"task-{now:%Y-%m-%d-%H-%M}"
+
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            document_id = _unique_document_id(conn, base_id)
+            blob_name = f"{DRAFT_PATH}/{document_id}.md"
+            storage_uri = f"{DRAFT_CONTAINER}/{blob_name}"
+
+            # Upload the markdown first; if the DB insert fails the transaction
+            # rolls back. The blob is written with overwrite so it stays
+            # idempotent even on a retry.
+            try:
+                client = get_blob_service_client()
+                blob_client = client.get_blob_client(
+                    container=DRAFT_CONTAINER, blob=blob_name
+                )
+                blob_client.upload_blob(
+                    payload.markdown.encode("utf-8"),
+                    overwrite=True,
+                    content_type="text/markdown; charset=utf-8",
+                )
+            except HTTPException:
+                raise
+            except Exception as exc:
+                logger.exception("task card blob upload failed")
+                raise HTTPException(
+                    status_code=503, detail=f"blob storage unavailable: {exc}"
+                ) from exc
+
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO document
+                        (document_id, title, type, revision, date, storage_uri, status)
+                    VALUES
+                        (:document_id, :title, :type, :revision, :date, :storage_uri, :status)
+                    """
+                ),
+                {
+                    "document_id": document_id,
+                    "title": payload.title,
+                    "type": "Task Card",
+                    "revision": "Draft",
+                    "date": date.today(),
+                    "storage_uri": storage_uri,
+                    "status": "draft",
+                },
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:  # surface a clean 503 instead of a 500 stack trace
+        logger.exception("task card creation failed")
+        raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
+
+    return CreateTaskCardResponse(
+        document_id=document_id, storage_uri=storage_uri, status="draft"
+    )

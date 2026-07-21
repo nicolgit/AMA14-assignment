@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import MarkdownViewer from '../components/MarkdownViewer.vue'
 import { API_BASE_URL } from '../config'
+
+const router = useRouter()
 
 interface KbDocument {
   document_id: string
@@ -38,12 +41,17 @@ interface ChatTurn {
   content: string
   references?: ChatReference[]
   taskCardMarkdown?: string | null
+  taskCardTitle?: string | null
 }
 
 const chatTurns = ref<ChatTurn[]>([])
 const chatLoading = ref(false)
 const chatError = ref('')
 const chatLog = ref<HTMLElement | null>(null)
+
+// Index of the task-card turn currently being promoted into a document, so the
+// button can show a busy state and stay disabled during the request.
+const creatingCardIndex = ref<number | null>(null)
 
 // Auto-scroll the chat log to the bottom whenever a turn is added.
 watch(
@@ -123,6 +131,7 @@ async function sendChat(text: string) {
       content: data.reply ?? '',
       references: data.references ?? [],
       taskCardMarkdown: data.task_card_draft?.markdown ?? null,
+      taskCardTitle: data.task_card_draft?.title ?? null,
     })
   } catch (err) {
     chatError.value = err instanceof Error ? err.message : String(err)
@@ -133,6 +142,47 @@ async function sendChat(text: string) {
 
 function toggleMic() {
   // Voice input placeholder — no behaviour yet.
+}
+
+// Promote a drafted task card into a real (draft-status) document: create the
+// .md file + a `document` row server-side, then open the new card's detail view.
+async function workOnTaskCard(turn: ChatTurn, index: number) {
+  if (!turn.taskCardMarkdown || creatingCardIndex.value !== null) return
+  if (!window.confirm('Create a draft task card document and open it for editing?')) {
+    return
+  }
+
+  chatError.value = ''
+  creatingCardIndex.value = index
+  try {
+    const res = await fetch(`${API_BASE_URL}/v1/engineering/task-card`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: turn.taskCardTitle || 'Draft task card',
+        markdown: turn.taskCardMarkdown,
+      }),
+    })
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        if (body?.detail) detail = body.detail
+      } catch {
+        /* response had no JSON body */
+      }
+      throw new Error(detail)
+    }
+    const data = await res.json()
+    await router.push({
+      name: 'easa-doc-detail',
+      params: { docid: data.document_id },
+    })
+  } catch (err) {
+    chatError.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    creatingCardIndex.value = null
+  }
 }
 
 async function loadDocuments() {
@@ -338,6 +388,16 @@ onMounted(loadDocuments)
             <div v-if="turn.taskCardMarkdown" class="task-card">
               <div class="task-card-head">📝 Draft task card — pending review</div>
               <MarkdownViewer :source="turn.taskCardMarkdown" class="task-card-body" />
+              <div class="task-card-actions">
+                <button
+                  class="task-card-btn"
+                  type="button"
+                  :disabled="creatingCardIndex !== null"
+                  @click="workOnTaskCard(turn, i)"
+                >
+                  {{ creatingCardIndex === i ? 'Creating…' : '🛠️ Work on this task card' }}
+                </button>
+              </div>
             </div>
 
             <div v-if="turn.references && turn.references.length" class="refs">
@@ -740,6 +800,34 @@ onMounted(loadDocuments)
   padding: 12px;
   font-size: 0.82rem;
   background: var(--social-bg);
+}
+
+.task-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 12px;
+  border-top: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.task-card-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: var(--accent);
+}
+
+.task-card-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.task-card-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .refs {
