@@ -1,0 +1,7 @@
+document_id,title,type,revision,date,storage_uri,status
+AMM-PWR-70-80,Aircraft Maintenance Manual — Powerplant (Sample Extract),AMM,Rev. 14,2026-05-01,engineering-docs/sample-docs/AMM-Aircraft-maintenance-manual-sample-amm-engine.md,published
+TC-0001,HPC Borescope Inspection (Routine),Task Card,Rev. 14,2026-05-10,engineering-docs/sample-docs/task-card-0001.md,published
+TC-0002,HPC Blade Blending Repair (Non-Routine),Task Card,Rev. 13,2026-05-12,engineering-docs/sample-docs/task-card-0002.md,published
+TC-0003,Fuel Nozzle Replacement (Routine),Task Card,Rev. 14,2026-05-15,engineering-docs/sample-docs/task-card-0003.md,published
+TC-0004,Engine Oil Filter Inspection / Chip Detection (Routine),Task Card,Rev. 14,2026-05-18,engineering-docs/sample-docs/task-card-0004.md,published
+TC-0005,Fan Blade Visual Inspection / FOD Assessment (Routine),Task Card,Rev. 14,2026-05-20,engineering-docs/sample-docs/task-card-0005.md,published

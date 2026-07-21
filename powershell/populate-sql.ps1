@@ -67,6 +67,7 @@ DROP TABLE IF EXISTS evaluation CASCADE;
 DROP TABLE IF EXISTS spare_part CASCADE;
 DROP TABLE IF EXISTS status CASCADE;
 DROP TABLE IF EXISTS location CASCADE;
+DROP TABLE IF EXISTS document CASCADE;
 
 CREATE TABLE location (
   location_code text PRIMARY KEY,
@@ -135,6 +136,16 @@ CREATE TABLE location_distance (
   transfer_time int,
   transfer_cost real,
   PRIMARY KEY (location_1, location_2)
+);
+
+CREATE TABLE document (
+  document_id text PRIMARY KEY,
+  title       text NOT NULL,
+  type        text,
+  revision    text,
+  date        date,
+  storage_uri text,
+  status      text
 );
 '@)
 
@@ -233,9 +244,24 @@ $vals = $eval.PSObject.Properties | ForEach-Object {
 }
 Add-InsertStatement -Builder $sb -TableName 'evaluation' -ColumnList 'name, value' -Rows $vals
 
+# --- document (metadata dai documenti manutentivi) ---
+$doc = Import-Csv (Join-Path $sampleDir 'docs.csv')
+$vals = $doc | ForEach-Object {
+  '(' + (@(
+    ConvertTo-SqlText $_.document_id
+    ConvertTo-SqlText $_.title
+    ConvertTo-SqlText $_.type
+    ConvertTo-SqlText $_.revision
+    ConvertTo-SqlText $_.date
+    ConvertTo-SqlText $_.storage_uri
+    ConvertTo-SqlText $_.status
+  ) -join ', ') + ')'
+}
+Add-InsertStatement -Builder $sb -TableName 'document' -ColumnList 'document_id, title, type, revision, date, storage_uri, status' -Rows $vals
+
 $sqlFile = Join-Path ([System.IO.Path]::GetTempPath()) 'load-data-sample.generated.sql'
 Set-Content -Path $sqlFile -Value $sb.ToString() -Encoding utf8
-Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count), engine=$($eng.Count), spare_part=$($sp.Count), spare_part_location=$($spl.Count), location_distance=$($ld.Count), prediction=$($pred.Count), evaluation=$($eval.PSObject.Properties.Count))"
+Write-Host "Script SQL generato: $sqlFile  (location=$($loc.Count), status=$($st.Count), aircraft=$($ac.Count), engine=$($eng.Count), spare_part=$($sp.Count), spare_part_location=$($spl.Count), location_distance=$($ld.Count), prediction=$($pred.Count), evaluation=$($eval.PSObject.Properties.Count), document=$($doc.Count))"
 
 # 3. Esegui lo script usando un token Entra come password (passwordless)
 # `execute` vive nell'estensione rdbms-connect: installala se manca.
