@@ -126,7 +126,7 @@ def update_document_blob(docid: str, payload: UpdateDocumentBlob):
     """
     query = text(
         """
-        SELECT storage_uri, status
+        SELECT storage_uri, status, revision
         FROM document
         WHERE document_id = :document_id
         """
@@ -166,23 +166,21 @@ def update_document_blob(docid: str, payload: UpdateDocumentBlob):
     except Exception as exc:  # surface a clean 503 instead of a 500 stack trace
         raise HTTPException(status_code=503, detail=f"blob storage unavailable: {exc}") from exc
 
+    # Always increment revision on save (including publish).
+    current_rev = row["revision"] or "0"
+    try:
+        new_rev = str(int(current_rev) + 1)
+    except ValueError:
+        new_rev = "1"
+
+    update_parts = ["revision = :revision"]
+    params: dict = {"document_id": docid, "revision": new_rev}
+
     # Persist an optional title change alongside the content update.
     new_title = (payload.title or "").strip()
     if new_title:
-        try:
-            with engine.begin() as conn:
-                conn.execute(
-                    text(
-                        """
-                        UPDATE document
-                        SET title = :title
-                        WHERE document_id = :document_id
-                        """
-                    ),
-                    {"title": new_title, "document_id": docid},
-                )
-        except Exception as exc:  # surface a clean 503 instead of a 500 stack trace
-            raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
+        update_parts.append("title = :title")
+        params["title"] = new_title
 
     # Optional draft -> published transition.
     new_status = (payload.status or "").strip().lower()
@@ -192,20 +190,20 @@ def update_document_blob(docid: str, payload: UpdateDocumentBlob):
                 status_code=422,
                 detail=f"unsupported status transition: {payload.status!r}",
             )
-        try:
-            with engine.begin() as conn:
-                conn.execute(
-                    text(
-                        """
-                        UPDATE document
-                        SET status = :status
-                        WHERE document_id = :document_id
-                        """
-                    ),
-                    {"status": "published", "document_id": docid},
-                )
-        except Exception as exc:  # surface a clean 503 instead of a 500 stack trace
-            raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
+        update_parts.append("status = :status")
+        params["status"] = "published"
+
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    f"UPDATE document SET {', '.join(update_parts)} "
+                    f"WHERE document_id = :document_id"
+                ),
+                params,
+            )
+    except Exception as exc:  # surface a clean 503 instead of a 500 stack trace
+        raise HTTPException(status_code=503, detail=f"database unavailable: {exc}") from exc
 
     return PlainTextResponse(
         content=payload.content,

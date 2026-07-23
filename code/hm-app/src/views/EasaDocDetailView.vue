@@ -98,7 +98,11 @@ async function saveEdit() {
       throw new Error(detail)
     }
     content.value = editContent.value
-    if (doc.value) doc.value.title = editTitle.value.trim() || doc.value.title
+    if (doc.value) {
+      doc.value.title = editTitle.value.trim() || doc.value.title
+      const curRev = parseInt(doc.value.revision ?? '0', 10) || 0
+      doc.value.revision = String(curRev + 1)
+    }
     editing.value = false
   } catch (err) {
     saveError.value = err instanceof Error ? err.message : String(err)
@@ -139,6 +143,8 @@ async function publishEdit() {
     content.value = editContent.value
     if (doc.value) {
       doc.value.title = editTitle.value.trim() || doc.value.title
+      const curRev = parseInt(doc.value.revision ?? '0', 10) || 0
+      doc.value.revision = String(curRev + 1)
       doc.value.status = 'published'
     }
     editing.value = false

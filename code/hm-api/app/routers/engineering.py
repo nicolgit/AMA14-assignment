@@ -510,7 +510,7 @@ def create_task_card(payload: CreateTaskCardRequest):
                     "document_id": document_id,
                     "title": payload.title,
                     "type": "Task Card",
-                    "revision": "Draft",
+                    "revision": "1",
                     "date": date.today(),
                     "storage_uri": storage_uri,
                     "status": "draft",
