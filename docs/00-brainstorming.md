@@ -121,7 +121,7 @@ I pillar sono allineati al **Well-Architected Framework (WAF)** di Microsoft.
 - Data protection: encryption at rest (CMK) + in transit (TLS 1.3)
 - Secrets: Key Vault, no credentials in code
 - Monitoring: Sentinel, Defender for Cloud, threat detection
-- → Diagramma: "nessun dato esce dalla rete privata"
+> questo è il motivo per cui il CISO può approvare
 
 **3C — Pillar WAF: Reliability (2-3 minuti)**
 - Compute: Container Apps (auto-scale), Azure ML managed endpoints (blue-green)
@@ -130,12 +130,16 @@ I pillar sono allineati al **Well-Architected Framework (WAF)** di Microsoft.
 - Elasticità: da 340 aeromobili oggi a 500+ domani senza re-architecture
 - → Messaggio: "la piattaforma scala con il business, non è un PoC"
 
+> "questo è il motivo per cui non ci fermiamo se cade una region"
+
 **3D — Pillar WAF: Cost Optimization (2-3 minuti)**
 - Modello di costo: pay-per-use vs. reserved (ML compute, storage tiers)
 - Leve di ottimizzazione: spot instances per training, hot/cool/archive per i dati storici
 - TCO confronto: costo piattaforma vs. costo attuale AOG + doc + ricambi sbagliati
 - Governance costi: budget alerts, cost anomaly detection, tagging strategy
 - → Messaggio: "non è un costo IT, è un investimento con payback misurabile"
+
+> questo è il motivo per cui il CFO non vede un buco nero di costi
 
 **3E — Pillar WAF: Operational Excellence (1-2 minuti)**
 - Infrastructure as Code: tutto il deploy è Bicep, ripetibile, versionato
@@ -144,24 +148,47 @@ I pillar sono allineati al **Well-Architected Framework (WAF)** di Microsoft.
 - Observability: Application Insights, Log Analytics, workbook operativi
 - → Messaggio: "non è solo costruita bene, è gestibile dal Day 2"
 
+> questo è il motivo per cui non servono 10 persone per gestirla
+
 **3F — Pillar WAF: Performance Efficiency (1 minuto)**
 - Latenza inferenza RUL: target <200ms per scoring online
 - Sizing: right-sizing compute per workload (training GPU vs. inference CPU)
 - Auto-scale: Container Apps scale-to-zero, burst per picchi di manutenzione
 - Caching e ottimizzazione query: AI Search semantic ranking, PostgreSQL indexing
 
+> questo è il motivo per cui il tecnico non aspetta il sistema
+
 ### Atto 4 — I tre use case AI in azione (minuti 20-28)
 Ora che l'architettura è chiara, i tre use case diventano "prove" che la piattaforma funziona.
-
-- **AI-01: Il motore parla** — telemetria → CNN-LSTM → semaforo urgenza → decisione umana
-  - Dove vive nell'architettura: IoT Hub → Stream Analytics → ML endpoint → API → dashboard
-- **AI-02: Il ricambio giusto, al posto giusto** — urgency scoring → sourcing ottimale → Dynamics 365
-  - Dove vive: PostgreSQL + ML scoring → optimization engine → Field Service integration
-- **AI-03: L'ingegnere che detta** — voce → Speech → OpenAI + RAG → task card → firma umana
-  - Dove vive: Speech Services → Azure OpenAI → AI Search (private link) → app review
-
-Per ciascuno: 2-3 minuti, pattern "problema → componenti Azure → output → beneficio misurato"
+Pattern per ciascuno: **problema → dove vive nell'architettura → DEMO → beneficio misurato**
 Enfasi costante: "L'AI propone, l'uomo decide e firma"
+
+**AI-01: Il motore parla (minuti 20-23)**
+- Problema: guasto non previsto → 11h AOG
+- Dove vive: IoT Hub → Stream Analytics → ML endpoint (CNN-LSTM) → API → dashboard
+- 🎬 **Demo (~1 min):** screenshot o live della dashboard con il semaforo RUL
+  - Mostra un motore che passa da verde a giallo
+  - Evidenzia: RUL residuo, margine di sicurezza, livello di urgenza
+  - Piano B: screenshot statico con annotazioni
+- Beneficio: AOG da 11h a <3h, manutenzione programmata invece che reattiva
+
+**AI-02: Il ricambio giusto, al posto giusto (minuti 23-25)**
+- Problema: ricambio nel magazzino sbagliato, cannibalizzazione componenti
+- Dove vive: PostgreSQL + ML scoring → optimization engine → Field Service integration
+- 🎬 **Demo (~30s):** mappa d'Europa con i 12 hangar
+  - Mostra scorte, flussi di trasferimento suggeriti, scoring di urgenza
+  - Piano B: slide con mappa statica + frecce di flusso
+- Beneficio: disponibilità ricambi +34%, fine cannibalizzazione
+
+**AI-03: L'ingegnere che detta (minuti 25-28) ⬅ MOMENTO WOW**
+- Problema: task card compilate a mano, 4.500h/anno, errori, nessun riferimento normativo
+- Dove vive: Speech Services → Azure OpenAI → AI Search (RAG, private link) → app review → firma
+- 🎬 **Demo (~1.5 min):** il pezzo forte della presentazione
+  - Opzione A (ideale): video registrato di voce tecnico → task card che si compila live
+  - Opzione B: before/after side-by-side (task card manuale vs. generata con citazioni EASA)
+  - Opzione C (fallback): screenshot annotato del flusso Speech → RAG → output
+  - In tutti i casi: evidenziare le citazioni AMM/SRM, l'effectivity check, il pulsante di firma umana
+- Beneficio: effort doc -55%, first-time-fix 71%→89%, knowledge retention di Jean-Pierre
 
 ### Atto 5 — Compliance normativa (minuti 28-32)
 Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REGOLAMENTI:
@@ -236,25 +263,28 @@ Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REG
 
 ## 7. Scaletta timing (bozza)
 
-| Minuti | Sezione | Slide stimate | Chi parla a... |
-|--------|---------|---------------|----------------|
-| 0-2 | Cold open — l'aereo fermo | 1-2 | Tutti |
-| 2-4 | Il fattore umano — Jean-Pierre | 1 | CTO, CFO |
-| 4-7 | I numeri del problema | 2-3 | CFO, CIO |
-| 7-9 | La visione: da reattivo a predittivo | 2 | Tutti |
-| 9-11 | KPI before/after | 1 | CFO |
-| 11-13 | Architettura end-to-end (diagramma) | 1-2 | CIO, CTO |
-| 13-16 | Pillar: Security & Zero-Trust | 2-3 | CISO, CTO |
-| 16-18 | Pillar: Scalabilità & Reliability | 2 | CIO, CTO |
-| 18-20 | Pillar: Cost & FinOps | 1-2 | CFO, CIO |
-| 20-23 | AI-01: Predizione RUL | 2-3 | CTO |
-| 23-25 | AI-02: Ottimizzazione ricambi | 2 | CFO, CIO |
-| 25-28 | AI-03: Engineering Copilot | 2-3 | CTO, CFO |
-| 28-32 | Compliance normativa | 3 | CISO, CIO |
-| 32-35 | Ritorno narrativo + KPI | 2 | Tutti |
-| 35-38 | Roadmap + TCO | 2 | CFO, CIO |
-| 38-40 | Call-to-action + chiusura | 1 | Tutti |
-| | **Totale** | **~27 slide** | |
+| Minuti | Atto | Sezione | Slide stimate | Chi parla a... |
+|--------|------|---------|---------------|----------------|
+| 0-1 | 1 | Apertura — "sono un tecnico, ma..." | 1 | Tutti |
+| 1-3 | 1 | Il fattore umano — Jean-Pierre | 1 | CTO, CFO |
+| 3-5 | 1 | I numeri del problema | 2 | CFO, CIO |
+| 5-7 | 1 | Ponte: "non è un problema tecnico, è di business" | 1 | Tutti |
+| 7-9 | 2 | Framework: da reattivo a predittivo + le 4 leve | 2 | Tutti |
+| 9-11 | 2 | KPI before/after | 1 | CFO |
+| 11-13 | 3 | 3A: Architettura end-to-end (diagramma) | 1-2 | CIO, CTO |
+| 13-15 | 3 | 3B: WAF Security | 2 | CISO, CTO |
+| 15-16 | 3 | 3C: WAF Reliability | 1 | CIO, CTO |
+| 16-18 | 3 | 3D: WAF Cost Optimization | 1-2 | CFO, CIO |
+| 18-19 | 3 | 3E: WAF Operational Excellence | 1 | CIO, CTO |
+| 19-20 | 3 | 3F: WAF Performance Efficiency | 1 | CTO |
+| 20-23 | 4 | AI-01: RUL + 🎬 demo semaforo (~1 min) | 2-3 | CTO |
+| 23-25 | 4 | AI-02: Spare parts + 🎬 demo mappa (~30s) | 2 | CFO, CIO |
+| 25-28 | 4 | AI-03: Copilot + 🎬 demo voce→task card (~1.5 min) | 2-3 | CTO, CFO |
+| 28-32 | 5 | Compliance normativa | 3 | CISO, CIO |
+| 32-35 | 6 | Ritorno narrativo + KPI | 2 | Tutti |
+| 35-38 | 6 | Roadmap + TCO | 2 | CFO, CIO |
+| 38-40 | 6 | Call-to-action + chiusura | 1 | Tutti |
+| | | **Totale** | **~28 slide** | |
 
 ---
 
