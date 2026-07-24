@@ -6,51 +6,7 @@
 
 ---
 
-## 1. Il problema dello storytelling: come aprire?
-
-### Opzione A — "L'aereo fermo" (cold open narrativa)
-
-Apri con un fatto concreto, quasi cinematografico:
-
-> "Sono le 06:14, Hangar 7 a Toulouse. Un A320neo è fermo da 9 ore per un guasto al sistema bleed-air.
-> Il componente di ricambio esiste — ma è nel magazzino di Amburgo.
-> Il tecnico senior che conosce la procedura è in pensione da tre mesi.
-> La task card EASA è incompleta.
-> Sei passeggeri hanno perso la coincidenza, la compagnia ha un AOG da 42.000 €, e tutto poteva essere evitato."
-
-Poi giri: **"Questo scenario si ripete 340 volte l'anno nella nostra flotta. HangarMind esiste per impedirlo."**
-
-**Perché funziona:** mette i C-level dentro il problema, crea urgenza, è memorabile. Non è un elenco di feature — è una storia.
-
-### Opzione B — "I cinque segnali ignorati" (pattern recognition)
-
-Apri mostrando che il problema non è un singolo guasto ma un pattern sistemico:
-
-1. Il motore mandava segnali da 80 cicli — nessuno li ha correlati
-2. Il ricambio c'era, ma nel magazzino sbagliato
-3. L'ingegnere sapeva come fare, ma la procedura non era codificata
-4. La task card è stata compilata a mano, 3 ore dopo
-5. Il report EASA è stato rifatto due volte perché mancavano i riferimenti normativi
-
-Poi: **"Cinque fallimenti indipendenti che producono un unico risultato: l'aereo resta a terra. HangarMind interviene su tutti e cinque."**
-
-**Perché funziona:** mostra la natura multi-dimensionale del problema, giustifica una soluzione integrata (non cinque tool separati).
-
-### Opzione C — "Il pensionamento" (human angle)
-
-> "Jean-Pierre ha 37 anni di esperienza sui motori CFM56. Tra 14 mesi va in pensione.
-> Con lui se ne va il 'sapere' di come diagnosticare un flutter anomalo che nessun manuale copre.
-> Oggi quel sapere vive nella sua testa. Domani, dove vivrà?"
-
-**Perché funziona:** il knowledge loss è il tema più emotivo; colpisce il CTO (competenze), il CIO (rischio operativo), il CFO (costo di riaddestramento).
-
-### Raccomandazione
-
-**Combinare A + C:** apri con "l'aereo fermo" (2 minuti di cold open), poi introduci il fattore umano di Jean-Pierre. In 4 minuti hai catturato l'attenzione e hai giustificato sia la componente predittiva sia quella di knowledge management.
-
----
-
-## 2. L'audience: cosa interessa a chi?
+## 1. L'audience: cosa interessa a chi?
 
 | Ruolo | Domanda chiave | Angolo HangarMind |
 |-------|---------------|-------------------|
@@ -63,29 +19,103 @@ Poi: **"Cinque fallimenti indipendenti che producono un unico risultato: l'aereo
 
 ---
 
-## 3. Struttura narrativa proposta (arco in 6 atti)
+## 2. Struttura narrativa proposta (arco in 6 atti)
 
-### Atto 1 — Il contesto e il dolore (minuti 0-7)
-- Cold open: l'aereo fermo (Opzione A)
-- I numeri del problema: 340 aeromobili, 6 carrier, 12 hangar, 11h AOG, 4500h doc, 31% pensionamenti
+### Atto 1 — Incipit e contesto (minuti 0-7)
+
+**Apertura (minuti 0-1)**
+
+> "Buongiorno, sono **nicolgit**, Cloud Solution Architect.
+> 
+> Vi avverto: sono un tecnico, e tra poco vi mostrerò diagrammi e architetture.
+> Ma prima di aprire il cofano, voglio partire dal motivo per cui lo stiamo facendo.
+> 
+> Il nostro MRO ha un problema strutturale: quando un motore si guasta senza preavviso, perdiamo in media 11 ore per rimettere l'aereo in linea. Il ricambio è nel magazzino sbagliato. La procedura è nella testa di un ingegnere che va in pensione. La documentazione EASA richiede ore di compilazione manuale.
+> 
+> La piattaforma che vi presento risolve questi tre problemi insieme.
+
+**Il fattore umano (minuti 1-3)**
+
+> "Per dare un volto al problema: Jean-Pierre ha 37 anni di esperienza sui motori CFM56. Tra 14 mesi va in pensione.
+> Con lui se ne va il sapere di come diagnosticare un flutter anomalo che nessun manuale copre.
+> Oggi quel sapere vive nella sua testa. Domani, dove vivrà?"
+
+**I numeri del problema (minuti 3-5)**
+- 340 aeromobili, 6 carrier, 12 hangar distribuiti in 5 paesi
+- 11 ore di AOG medio per evento non programmato
+- 4.500 ore/uomo all'anno per documentazione EASA
+- 31% degli ingegneri senior in uscita nei prossimi 3 anni
+- Formati dati OEM proprietari, nessun livello analitico unificato
+
+**Ponte verso l'Atto 2 (minuti 5-7)**
 - "Non è un problema tecnico. È un problema di business."
-- Chi siamo, cosa facciamo, perché adesso
+- Contestualizzazione: perché adesso, perché serve una piattaforma integrata (non cinque tool separati)
 
 ### Atto 2 — La visione: da reattivo a predittivo (minuti 7-11)
-- Il cambio di paradigma: da "rompi → ripara" a "prevedi → prepara → preserva"
-- Le quattro leve di HangarMind (RUL, spare parts, EASA automation, knowledge)
-- I risultati attesi (tabella KPI before/after — visual forte, una sola slide)
-- Non è un progetto IT, è una trasformazione operativa
+
+**Transizione dall'Atto 1:**
+> "Vi ho mostrato il problema. Ora vi mostro il cambio di paradigma."
+
+**Il framework concettuale: tre verbi**
+
+| Oggi (reattivo) | Domani (predittivo) |
+|---|---|
+| **Rompi** → Ripara | **Prevedi** → Prepara → Preserva |
+| Il guasto detta i tempi | Il dato anticipa il guasto |
+| Il tecnico cerca il ricambio | Il ricambio aspetta il tecnico |
+| L'ingegnere compila a mano | L'AI compila, l'ingegnere valida e firma |
+| Il sapere è nelle teste | Il sapere è nella piattaforma |
+
+> "Passiamo da un modello in cui il guasto detta i tempi a uno in cui il dato anticipa il guasto.
+> Da un modello in cui il tecnico cerca il ricambio a uno in cui il ricambio aspetta il tecnico.
+> Da un modello in cui l'esperto compila a mano a uno in cui l'AI propone e l'esperto valida."
+
+**Le quattro leve di HangarMind (1 slide, schema visivo)**
+
+Presentale come una catena causa-effetto, non come una lista:
+
+```
+Telemetria motore → [1. PREVEDI: RUL prediction]
+                         ↓
+                    [2. PREPARA: Spare parts optimization]
+                         ↓
+Evento manutenzione → [3. AUTOMATIZZA: EASA documentation]
+                         ↓
+                    [4. PRESERVA: Knowledge capture]
+```
+
+- **Leva 1 — Prevedi:** il motore ci dice quando sta per guastarsi (RUL)
+- **Leva 2 — Prepara:** sapendo quando serve il ricambio, lo posizioniamo prima (spare optimization)
+- **Leva 3 — Automatizza:** quando il tecnico interviene, la documentazione si genera (EASA copilot)
+- **Leva 4 — Preserva:** ogni intervento cattura e codifica il sapere esperto (knowledge retention)
+
+> "Non sono quattro progetti separati. Sono una pipeline: prevedere abilita preparare, che abilita automatizzare, che abilita preservare."
+
+**I risultati attesi (1 slide, visual forte)**
+
+| Metrica | Oggi | Obiettivo | Δ |
+|---------|------|-----------|---|
+| Tempo AOG per evento | 11 h | < 3 h | **−73%** |
+| Disponibilità ricambi point-of-use | baseline | +34% | |
+| Effort documentazione EASA | 4.500 h/anno | ~2.000 h/anno | **−55%** |
+| First-time-fix rate | 71% | 89% | **+18pp** |
+
+> "Questi non sono target aspirazionali. Sono i numeri che l'architettura che vi mostro tra un minuto è disegnata per raggiungere."
+
+**Chiusura Atto 2 — ponte verso l'architettura:**
+> "Ora sapete COSA vogliamo ottenere e PERCHÉ. Vi mostro il COME: l'architettura della piattaforma."
 
 ### Atto 3 — L'architettura della soluzione (minuti 11-20) ⬅ CUORE CSA
 Questo è il momento in cui il CSA "apre il cofano" e mostra come la soluzione sta in piedi.
+
+I pillar sono allineati al **Well-Architected Framework (WAF)** di Microsoft.
 
 **3A — Vista d'insieme (1 diagramma architetturale, 2-3 minuti)**
 - Diagramma end-to-end: edge/IoT → ingestion → data platform → AI/ML → app layer → utenti
 - Landing Zone: hub-spoke networking, subscription topology
 - Flusso dati: dalla telemetria OEM fino alla dashboard e alla task card
 
-**3B — Pillar: Security & Zero-Trust (3-4 minuti)**
+**3B — Pillar WAF: Security (3-4 minuti)**
 - Network isolation: hub-spoke, private endpoints, nessun public exposure
 - Identity: Entra ID, PIM, Managed Identity, RBAC fine-grained
 - Data protection: encryption at rest (CMK) + in transit (TLS 1.3)
@@ -93,25 +123,32 @@ Questo è il momento in cui il CSA "apre il cofano" e mostra come la soluzione s
 - Monitoring: Sentinel, Defender for Cloud, threat detection
 - → Diagramma: "nessun dato esce dalla rete privata"
 
-**3C — Pillar: Scalabilità & Reliability (2-3 minuti)**
+**3C — Pillar WAF: Reliability (2-3 minuti)**
 - Compute: Container Apps (auto-scale), Azure ML managed endpoints (blue-green)
 - Data: ADLS Gen2 + Delta Lake (petabyte-ready), Fabric per analytics
 - Resilienza: multi-AZ, DR strategy, RPO/RTO targets
 - Elasticità: da 340 aeromobili oggi a 500+ domani senza re-architecture
 - → Messaggio: "la piattaforma scala con il business, non è un PoC"
 
-**3D — Pillar: Cost Management & FinOps (2-3 minuti)**
+**3D — Pillar WAF: Cost Optimization (2-3 minuti)**
 - Modello di costo: pay-per-use vs. reserved (ML compute, storage tiers)
 - Leve di ottimizzazione: spot instances per training, hot/cool/archive per i dati storici
 - TCO confronto: costo piattaforma vs. costo attuale AOG + doc + ricambi sbagliati
 - Governance costi: budget alerts, cost anomaly detection, tagging strategy
 - → Messaggio: "non è un costo IT, è un investimento con payback misurabile"
 
-**3E — Pillar: Governance & Observability (1-2 minuti)**
-- Azure Policy: guardrail su region, SKU, encryption, tagging
-- Purview: data catalog, lineage, classification automatica
-- AI audit log: ogni inferenza tracciata su immutable blob (EU AI Act ready)
-- Monitoring: Application Insights, Log Analytics, workbook operativi
+**3E — Pillar WAF: Operational Excellence (1-2 minuti)**
+- Infrastructure as Code: tutto il deploy è Bicep, ripetibile, versionato
+- CI/CD: pipeline di deploy automatizzate, blue-green per ML endpoints
+- Incident management: runbook operativi, alerting, escalation
+- Observability: Application Insights, Log Analytics, workbook operativi
+- → Messaggio: "non è solo costruita bene, è gestibile dal Day 2"
+
+**3F — Pillar WAF: Performance Efficiency (1 minuto)**
+- Latenza inferenza RUL: target <200ms per scoring online
+- Sizing: right-sizing compute per workload (training GPU vs. inference CPU)
+- Auto-scale: Container Apps scale-to-zero, burst per picchi di manutenzione
+- Caching e ottimizzazione query: AI Search semantic ranking, PostgreSQL indexing
 
 ### Atto 4 — I tre use case AI in azione (minuti 20-28)
 Ora che l'architettura è chiara, i tre use case diventano "prove" che la piattaforma funziona.
@@ -146,7 +183,7 @@ Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REG
 
 ---
 
-## 4. Principi di storytelling da seguire
+## 3. Principi di storytelling da seguire
 
 1. **Regola del "So what?"** — Ogni slide deve superare il test "e quindi?" Se non porta a un'azione o decisione, via.
 
@@ -156,13 +193,14 @@ Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REG
 
 4. **Show, don't tell** — Almeno 2 momenti "wow": una demo live, uno screenshot reale, un dato controintuitivo. I C-level vedono 50 presentazioni al mese, devi differenziarti.
 
+
 5. **L'analogia del ponte** — Ogni volta che passi da un atto all'altro, usa una frase-ponte che lega il vecchio al nuovo. Es: "Ora sappiamo che il motore sta per guastarsi. Ma il pezzo di ricambio dov'è?" → transizione naturale da AI-01 a AI-02.
 
 6. **Chiudi il cerchio** — La storia dell'Hangar 7 torna nell'atto 5. Il pubblico ricorda l'inizio e la fine, raramente il mezzo.
 
 ---
 
-## 5. Idee per momenti "wow" / differenzianti
+## 4. Idee per momenti "wow" / differenzianti
 
 - **Il semaforo RUL live** — Mostra un motore che passa da verde a giallo con i dati che scorrono. Anche simulato, è potente.
 - **La voce del tecnico** — Fai partire un audio (anche registrato) di un tecnico che detta una finding, e mostra la task card che si compila in tempo reale. È il momento più cinematografico.
@@ -172,7 +210,7 @@ Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REG
 
 ---
 
-## 6. Rischi di comunicazione da evitare
+## 5. Rischi di comunicazione da evitare
 
 | Rischio | Mitigazione |
 |---------|-------------|
@@ -185,7 +223,7 @@ Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REG
 
 ---
 
-## 7. Temi aperti / da decidere
+## 6. Temi aperti / da decidere
 
 - [ ] Quanto tempo dedicare alla demo vs. storytelling? (proposta: 60% storia, 40% demo)
 - [ ] Mostriamo l'architettura Azure in dettaglio o solo a blocchi? (proposta: blocchi nel main, dettaglio in appendice)
@@ -196,7 +234,7 @@ Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REG
 
 ---
 
-## 8. Scaletta timing (bozza)
+## 7. Scaletta timing (bozza)
 
 | Minuti | Sezione | Slide stimate | Chi parla a... |
 |--------|---------|---------------|----------------|
