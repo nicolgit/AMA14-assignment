@@ -115,13 +115,28 @@ I pillar sono allineati al **Well-Architected Framework (WAF)** di Microsoft.
 - Landing Zone: hub-spoke networking, subscription topology
 - Flusso dati: dalla telemetria OEM fino alla dashboard e alla task card
 
+> "Prima di entrare nei dettagli, guardiamo l'insieme. Questo diagramma racconta un solo flusso, da sinistra a destra: la telemetria dei motori arriva dagli aeromobili in flotta, viene ingerita in modo sicuro dentro la nostra landing zone, atterra nella data platform dove viene normalizzata, e da lì i modelli AI/ML calcolano il Remaining Useful Life. Il risultato non resta un numero in un database: diventa un'azione concreta nell'app layer — una dashboard per il manutentore e una task card conforme EASA. Tre cose che voglio farvi notare. Primo: è tutto dentro una landing zone hub-spoke, quindi ogni componente è isolato in rete e nessun dato è esposto pubblicamente. Secondo: ogni box che vedete è un servizio Azure managed, non un server che dobbiamo patchare noi. Terzo: questo non è uno schema teorico, è ciò che è già deployato via Bicep. Tenete a mente questo flusso, perché nei prossimi minuti lo attraverso pillar per pillar — sicurezza, affidabilità, costi — per mostrarvi che ogni scelta è giustificata, non casuale."
+
 **3B — Pillar WAF: Security (3-4 minuti)**
 - Network isolation: hub-spoke, private endpoints, nessun public exposure
 - Identity: Entra ID, PIM, Managed Identity, RBAC fine-grained
 - Data protection: encryption at rest (CMK) + in transit (TLS 1.3)
 - Secrets: Key Vault, no credentials in code
 - Monitoring: Sentinel, Defender for Cloud, threat detection
-> questo è il motivo per cui il CISO può approvare
+
+> "Partiamo dalla sicurezza, perché in un'organizzazione aviation è la prima domanda che vi farà il vostro CISO — e non è una domanda IT, è una domanda di safety e di reputazione. Qui non parliamo solo di dati: parliamo della telemetria dei motori della flotta e della documentazione di manutenzione che deve reggere a un audit EASA. Se questi dati vengono manomessi o esfiltrati, il rischio non è una multa: è un aeromobile che vola con una decisione manutentiva basata su dati compromessi. Per questo la security qui è disegnata dall'inizio, non aggiunta dopo. La risposta breve è: questa piattaforma è chiusa per costruzione. Vi porto attraverso cinque livelli.
+>
+> Primo, la rete. Tutto vive in una topologia hub-spoke con private endpoint: i servizi non hanno un indirizzo pubblico, i dati non transitano mai su internet e il traffico tra i componenti resta dentro la nostra rete privata. In pratica non c'è una porta esposta che un attaccante possa bussare dall'esterno. Il traffico verso l'esterno è filtrato e ispezionato centralmente nell'hub.
+>
+> Secondo, l'identità. Non ci sono password o stringhe di connessione nei servizi: ogni componente si autentica con Managed Identity ed Entra ID. Gli accessi amministrativi sono just-in-time via PIM — nessuno ha privilegi permanenti, li richiede quando servono e scadono da soli. E l'autorizzazione è RBAC granulare: un tecnico in linea vede i dati della sua flotta, non quelli di un altro operatore, e non può toccare la pipeline di training del modello. Least privilege applicato davvero, non sulla carta.
+>
+> Terzo, i dati. Cifrati a riposo con chiavi gestite da noi in Key Vault e in transito con TLS 1.3, end-to-end: vale sia per la telemetria sia per le task card EASA. Questo ci permette anche di rispettare la data residency — i dati restano nella region europea che scegliamo, un requisito non negoziabile in questo contesto regolatorio.
+>
+> Quarto, i segreti. Centralizzati in Key Vault, con rotazione e audit di ogni accesso: zero credenziali nel codice, zero segreti nei file di configurazione. Se domani va ruotata una chiave, si fa in un punto solo senza toccare le applicazioni.
+>
+> Quinto, il monitoraggio. Defender for Cloud ci dà la postura di sicurezza continua e le raccomandazioni di hardening; Sentinel correla i log e fa threat detection in tempo reale. E soprattutto abbiamo una traccia di audit completa e immutabile: chi ha fatto cosa, quando, su quale dato — esattamente ciò che un ispettore EASA o un auditor NIS2 vi chiederà di dimostrare.
+>
+> Il punto che voglio lasciarvi è questo: nessuno di questi controlli è un add-on opzionale, sono tutti codificati in Bicep e ridistribuibili in modo identico ad ogni ambiente. La sicurezza non dipende da qualcuno che si ricorda di configurarla. È esattamente il motivo per cui il vostro CISO può firmare l'approvazione senza chiedere deroghe — e per cui potete difendere questa piattaforma davanti a un auditor invece di temerlo."
 
 **3C — Pillar WAF: Reliability (2-3 minuti)**
 - Compute: Container Apps (auto-scale), Azure ML managed endpoints (blue-green)
