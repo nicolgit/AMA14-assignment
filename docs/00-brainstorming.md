@@ -51,6 +51,10 @@
 - "Non è un problema tecnico. È un problema di business."
 - Contestualizzazione: perché adesso, perché serve una piattaforma integrata (non cinque tool separati)
 
+> **⚠️WARNING⚠️**: Non posso garantirvi oggi che l’AOG passerà automaticamente da 11 a meno di 3 ore. Quello è il target di business assegnato al programma, non un risultato già dimostrato. L’architettura rende possibile intervenire sulle cause del ritardo, ma il risultato dipende anche da ricambi, personale, processi e qualità dei dati.
+> 
+> **Quello che posso garantirvi è un percorso misurabile**: baseline iniziale, pilot controllato, KPI concordati e gate go/no-go. Prima estendiamo la soluzione a uno o due hangar, confrontiamo gli eventi trattati con casi omogenei e misuriamo AOG, disponibilità ricambi, tempo di compilazione e first-time-fix. Solo se il miglioramento è statisticamente e operativamente significativo procediamo allo scale-out. 
+
 ### Atto 2 — La visione: da reattivo a predittivo (minuti 7-11)
 
 **Transizione dall'Atto 1:**
@@ -176,13 +180,22 @@ I pillar sono allineati al **Well-Architected Framework (WAF)** di Microsoft.
 > Il CFO non finanzia così un buco nero IT: riceve costi attribuibili, limiti e unit economics confrontabili con il problema. La piattaforma cresce soltanto quando cresce il valore prodotto."
 
 **3E — Pillar WAF: Operational Excellence (1-2 minuti)**
-- Infrastructure as Code: tutto il deploy è Bicep, ripetibile, versionato
-- CI/CD: pipeline di deploy automatizzate, blue-green per ML endpoints
-- Incident management: runbook operativi, alerting, escalation
-- Observability: Application Insights, Log Analytics, workbook operativi
-- → Messaggio: "non è solo costruita bene, è gestibile dal Day 2"
+- **Baseline già implementata:** infrastruttura Bicep modulare e versionabile, health endpoint applicativo, Application Insights, Log Analytics e diagnostica Azure ML centralizzata
+- **Delivery production:** pipeline CI/CD con validazione Bicep, test, ambienti separati, approvazione e rollback; blue-green per applicazione e modello
+- **Osservabilità operativa:** SLI/SLO per disponibilità, latenza, errori e qualità ML; alert azionabili, dashboard per ruolo e correlation ID end-to-end
+- **Incident management:** ownership, severity, escalation, runbook e post-incident review; esercitazioni periodiche su rollback e DR
+- **Gate Day 2:** pipeline, alert rule, workbook e runbook non sono ancora codificati nel PoC e devono essere verificati prima del go-live
+- → Messaggio: "Operational Excellence significa rendere il comportamento corretto ripetibile, osservabile e migliorabile"
 
-> questo è il motivo per cui non servono 10 persone per gestirla
+> "Fin qui abbiamo visto come la piattaforma resiste ai guasti e controlla i costi. Ma il vero test inizia il giorno dopo il go-live: chi la distribuisce, chi si accorge di un degrado e chi sa cosa fare alle tre del mattino?
+>
+> La baseline c'è già. L'infrastruttura è descritta in moduli Bicep, quindi è versionabile e ripetibile. L'API espone un health endpoint; applicazione e workspace ML inviano log e metriche ad Application Insights e Log Analytics.
+>
+> Il production hardening completa però il ciclo operativo. Ogni modifica deve attraversare una pipeline: validazione del Bicep, test automatici, ambiente di staging, approvazione e rollback. Applicazione e modello vengono rilasciati in blue-green, così una versione degradata non diventa un incidente esteso. Pipeline e traffic split non sono ancora implementati nel PoC: sono gate obbligatori prima del go-live.
+>
+> Poi trasformiamo la telemetria in decisioni. Definiamo SLO per disponibilità, latenza ed errori, ma anche per qualità del modello, drift e override umano. Gli alert devono indicare impatto, owner e prima azione; per gli scenari critici servono runbook, livelli di severità, escalation e post-incident review. Oggi abbiamo le fondamenta di osservabilità, non ancora questo modello operativo completo.
+>
+> Il risultato non è promettere che serviranno poche persone. È dare al team procedure automatizzate e segnali utili, affinché deployment e incidenti siano ripetibili, misurabili e migliorino dopo ogni evento. Questa è l'Operational Excellence: non soltanto costruire bene la piattaforma, ma saperla gestire dal Day 2."
 
 **3F — Pillar WAF: Performance Efficiency (1 minuto)**
 - Latenza inferenza RUL: target <200ms per scoring online
