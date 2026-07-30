@@ -281,12 +281,71 @@ Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REG
 > Quindi non vi chiedo di credere che HangarMind sia compliant perché gira su Azure. Vi mostro come arriviamo alla conformità: obbligo, controllo, owner, evidenza e approvazione. La compliance è embedded nel design, ma diventa reale soltanto quando è verificata."
 
 ### Atto 6 — Il ritorno e la call-to-action (minuti 32-40)
-- Ritorno narrativo: "Torniamo all'Hangar 7, sei mesi dopo..."
-- I numeri del cambiamento (ripetizione KPI con before/after enfatizzato)
-- Roadmap: cosa abbiamo fatto, cosa manca, prossimi passi
-- Il costo del non fare nulla (risk framing per il CFO)
-- Total Cost of Ownership: investimento vs. risparmio annualizzato
-- Call-to-action: approvazione budget, timeline, team
+
+**6A — Ritorno all'Hangar 7 (minuti 32-35)**
+
+- Riprendere Jean-Pierre e il caso iniziale, mostrando il futuro che il pilot deve validare, non un risultato già acquisito
+- Visual: stesso evento manutentivo in due timeline, **oggi** e **con HangarMind**
+- Oggi: allarme tardivo → ricerca ricambio → ricerca procedura → compilazione manuale → 11 ore AOG medie
+- Scenario target: preavviso RUL → ricambio pre-posizionato → task card con fonti → validazione e firma umana → obiettivo <3 ore
+- KPI del pilot: AOG, disponibilità point-of-use, tempo documentale, first-time-fix, qualità RUL, override umano e incidenti di compliance
+- → Messaggio: "non vi mostro un futuro garantito; vi mostro un'ipotesi di valore che sappiamo come misurare"
+
+> "Torniamo all'Hangar 7, sei mesi dopo. Non vi sto raccontando un risultato già ottenuto: vi sto mostrando la scena che il pilot deve rendere vera.
+>
+> Lo stesso motore che oggi ci sorprende ha iniziato a mostrare un degrado. HangarMind segnala il rischio con anticipo e rende visibili confidenza e margine di sicurezza. Il planner non aspetta il guasto: verifica la previsione e prepara lo slot. Il ricambio non parte con una spedizione urgente dopo l'AOG; viene proposto nel punto di utilizzo e un operatore approva il trasferimento.
+>
+> Quando il motore entra in hangar, Jean-Pierre non cerca la procedura in repository diversi. Detta il finding; il Copilot recupera la maintenance data applicabile, mostra revisione, effectivity e citazioni e prepara una bozza. Jean-Pierre corregge dove serve, approva e firma secondo il proprio ruolo. Il sistema conserva non soltanto la task card, ma il percorso che ha portato alla decisione.
+>
+> Questa è la differenza tra **automazione e autonomia**. HangarMind anticipa, collega e prepara; il personale autorizzato decide. L'obiettivo è portare l'AOG medio da 11 a meno di 3 ore, ridurre del 55% l'effort documentale, aumentare del 34% la disponibilità point-of-use e portare il first-time-fix dal 71% all'89%. Sono target del programma, non risultati del PoC.
+>
+> Per questo il successo non sarà una demo riuscita. Saranno eventi reali confrontati con una baseline: tempo AOG, disponibilità del ricambio, minuti di compilazione, first-time-fix, qualità della previsione, override umano ed eccezioni di compliance. Se i dati non confermano il valore, non estendiamo la piattaforma."
+
+**6B — Roadmap e decision gate (minuti 35-38)**
+
+| Fase | Durata proposta | Obiettivo | Gate di uscita |
+|------|-----------------|-----------|-----------------|
+| 0. Mobilize | 2 settimane | Confermare scope, owner, baseline, dati e criteri di successo | KPI firmati, data readiness e piano compliance |
+| 1. Pilot | 12 settimane | Eseguire i tre use case su 2 hangar rappresentativi | Beneficio misurato, soglie AI raggiunte, nessun blocker safety/compliance |
+| 2. Production hardening | 8-12 settimane | HA/DR, CI/CD, SLO, FinOps, security e compliance evidence | Go-live review con CIO, CISO, Quality e business owner |
+| 3. Scale-out | Per ondate | Estendere ai restanti hangar e integrare i sistemi enterprise | Gate per ondata basato su adozione, valore e affidabilità |
+
+- **TCO da includere:** build e integrazione, consumo Azure, operation, supporto, change management, formazione e compliance
+- **Valore da validare:** ore AOG evitate, trasferimenti urgenti ridotti, ore documentali recuperate e minore rilavorazione
+- **Costo del non agire:** AOG e logistica reattiva continuano; il 31% dei senior in uscita aumenta il rischio di perdita di conoscenza
+- **Regola finanziaria:** nessun ROI percentuale o payback definitivo prima di validare frequenza eventi, costo AOG, adozione e saving attribuibile
+- → Messaggio: "finanziamo il prossimo livello di evidenza, non l'intero programma sulla base di una promessa"
+
+> "Come trasformiamo questa scena in una decisione controllata? Non chiediamo di finanziare oggi il rollout su dodici hangar. Procediamo per gate.
+>
+> Nelle prime due settimane chiudiamo perimetro, owner, disponibilità dei dati e baseline. Concordiamo prima del test quali KPI contano, come vengono calcolati e quale miglioramento giustifica il passo successivo. Se i dati non sono utilizzabili o il processo non è misurabile, ci fermiamo prima di consumare il budget del pilot.
+>
+> Seguono dodici settimane su due hangar scelti per essere rappresentativi, non perché siano i più semplici. Eseguiamo i tre flussi end-to-end e confrontiamo casi omogenei. Il gate combina business, tecnologia e governance: beneficio osservabile, qualità AI entro soglia, adozione degli operatori e nessun blocker safety o compliance.
+>
+> Soltanto dopo affrontiamo il production hardening: alta disponibilità e disaster recovery, pipeline, SLO, operating model, FinOps e pacchetto di evidenze normative. Il rollout sugli altri hangar avviene per ondate; ogni ondata deve confermare affidabilità, adozione e valore.
+>
+> Anche il TCO segue questa disciplina. Contiamo build, integrazioni, cloud, operation, supporto, formazione, change management e compliance. Dall'altra parte misuriamo ore AOG evitate, spedizioni urgenti ridotte, tempo documentale recuperato e rilavorazioni evitate. Il costo di non agire resta visibile: continuiamo a pagare la reattività mentre il 31% degli esperti senior si avvicina all'uscita.
+>
+> Non vi presento quindi un ROI costruito su assunzioni non validate. Vi propongo di finanziare il prossimo livello di evidenza e di sbloccare ogni investimento successivo soltanto quando il valore è dimostrato."
+
+**6C — Call-to-action e chiusura (minuti 38-40)**
+
+- **Decisione richiesta:** autorizzare entro 30 giorni la fase Mobilize e il pilot di 12 settimane su 2 hangar
+- **Sponsor:** un executive sponsor con ownership del risultato end-to-end
+- **Core team:** Maintenance/Quality, Engineering, Supply Chain, Data/AI, Cloud Platform, Security, Finance e Change Management
+- **Budget:** approvare un envelope per Mobilize + pilot; baseline e sizing delle prime 2 settimane producono il business case per hardening e scale-out
+- **Prima milestone:** KPI, hangar, dataset, responsabilità e criteri go/no-go firmati alla fine della settimana 2
+- → Messaggio finale: "approviamo un esperimento controllato con il diritto e il dovere di fermarci se l'evidenza non regge"
+
+> "La decisione che vi chiediamo oggi è precisa: autorizzare entro trenta giorni la fase Mobilize e un pilot di dodici settimane su due hangar, con un executive sponsor e un team che unisca Maintenance, Quality, Engineering, Supply Chain, Data e AI, Cloud, Security, Finance e Change Management.
+>
+> Chiediamo un budget circoscritto a Mobilize e pilot, non un assegno in bianco per il rollout. Alla fine della seconda settimana avrete baseline, criteri go/no-go, data readiness, perimetro di compliance e sizing economico. Alla fine del pilot avrete misure per decidere se fermare, correggere o industrializzare.
+>
+> HangarMind non elimina la responsabilità delle persone: dà loro anticipo, contesto ed evidenze migliori. Non promette che ogni guasto sarà previsto; costruisce un processo che impara da ogni intervento. E non conserva Jean-Pierre in un algoritmo: fa in modo che la sua esperienza continui a essere disponibile, governata e verificabile quando lui non sarà più nell'Hangar 7.
+>
+> La scelta, quindi, non è tra innovare e non correre rischi. È tra continuare a subire costi e perdita di conoscenza senza misurarli, oppure verificare in modo controllato se possiamo ridurli.
+>
+> Vi chiediamo di approvare questo esperimento, insieme al diritto e al dovere di fermarci se l'evidenza non regge. Se invece regge, avremo non soltanto una piattaforma da scalare, ma un business case che sapremo difendere davanti al board, agli operatori e agli auditor."
 
 ---
 
