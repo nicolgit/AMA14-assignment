@@ -198,12 +198,21 @@ I pillar sono allineati al **Well-Architected Framework (WAF)** di Microsoft.
 > Il risultato non è promettere che serviranno poche persone. È dare al team procedure automatizzate e segnali utili, affinché deployment e incidenti siano ripetibili, misurabili e migliorino dopo ogni evento. Questa è l'Operational Excellence: non soltanto costruire bene la piattaforma, ma saperla gestire dal Day 2."
 
 **3F — Pillar WAF: Performance Efficiency (1 minuto)**
-- Latenza inferenza RUL: target <200ms per scoring online
-- Sizing: right-sizing compute per workload (training GPU vs. inference CPU)
-- Auto-scale: Container Apps scale-to-zero, burst per picchi di manutenzione
-- Caching e ottimizzazione query: AI Search semantic ranking, PostgreSQL indexing
+- **Baseline già implementata:** Container Apps dimensionate per il PoC a 0,25 vCPU/0,5 GiB, autoscaling da 0 a 2 repliche; Azure AI Search Standard per il retrieval documentale; PostgreSQL separato dal compute applicativo
+- **SLO production proposti:** scoring RUL online **p95 < 200 ms a caldo** e risposta dashboard **p95 < 2 secondi**, da validare con test di carico end-to-end
+- **Right-sizing per workload:** compute elastico per training e batch; CPU per inferenza RUL finché profiling e costo per predizione non giustificano acceleratori
+- **Eliminazione dei colli di bottiglia:** minimo 1-2 repliche sui percorsi interattivi per evitare cold start, scaling basato su concorrenza/HTTP, indici PostgreSQL verificati sui query plan e caching solo per dati non safety-critical
+- **Retrieval sotto controllo:** top-k e semantic ranking di AI Search calibrati insieme a latenza e qualità; paginazione e limiti impediscono query senza confini
+- **Gate prestazionale:** test con carico rappresentativo dei 12 hangar, metriche p50/p95/p99 e correlation ID in Application Insights prima del go-live
+- → Messaggio: "la performance non è la velocità del singolo servizio, è il tempo entro cui il tecnico riceve una risposta affidabile"
 
-> questo è il motivo per cui il tecnico non aspetta il sistema
+> "Chiudiamo i pillar con la domanda più concreta del tecnico: quanto devo aspettare? Nel PoC abbiamo una baseline volutamente piccola: Container Apps usa 0,25 vCPU e 0,5 GiB e scala da zero a due repliche. È efficiente nei costi, ma lo scale-to-zero può introdurre un cold start; quindi non presentiamo i 200 millisecondi come un risultato già ottenuto.
+>
+> Per la produzione proponiamo due SLO da validare: scoring RUL sotto 200 millisecondi al percentile 95 a servizio caldo e dashboard operativa sotto due secondi end-to-end. Sul percorso interattivo manteniamo almeno una replica pronta, scaliamo sui picchi e dimensioniamo ogni workload con misure reali: compute elastico per training e batch, CPU per l'inferenza finché il profiling non dimostra che serve altro.
+>
+> Anche il dato deve arrivare senza attrito. Verifichiamo gli indici PostgreSQL sui query plan e calibariamo top-k e semantic ranking di AI Search, perché recuperare più documenti non significa rispondere meglio. Il caching riguarda soltanto contenuti non safety-critical e non può restituire una predizione obsoleta.
+>
+> Il gate è un test di carico rappresentativo dei 12 hangar, osservato end-to-end con p50, p95 e p99. Questo è il motivo per cui il tecnico non aspetta il sistema: non perché promettiamo velocità, ma perché la misuriamo sul suo flusso reale prima del go-live."
 
 ### Atto 4 — I tre use case AI in azione (minuti 20-28)
 Ora che l'architettura è chiara, i tre use case diventano "prove" che la piattaforma funziona.
