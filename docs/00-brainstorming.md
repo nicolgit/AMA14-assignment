@@ -139,22 +139,41 @@ I pillar sono allineati al **Well-Architected Framework (WAF)** di Microsoft.
 > Il punto che voglio lasciarvi è questo: nessuno di questi controlli è un add-on opzionale, sono tutti codificati in Bicep e ridistribuibili in modo identico ad ogni ambiente. La sicurezza non dipende da qualcuno che si ricorda di configurarla. È esattamente il motivo per cui il vostro CISO può firmare l'approvazione senza chiedere deroghe — e per cui potete difendere questa piattaforma davanti a un auditor invece di temerlo."
 
 **3C — Pillar WAF: Reliability (2-3 minuti)**
-- Compute: Container Apps (auto-scale), Azure ML managed endpoints (blue-green)
-- Data: ADLS Gen2 + Delta Lake (petabyte-ready), Fabric per analytics
-- Resilienza: multi-AZ, DR strategy, RPO/RTO targets
-- Elasticità: da 340 aeromobili oggi a 500+ domani senza re-architecture
-- → Messaggio: "la piattaforma scala con il business, non è un PoC"
+- **Baseline già implementata:** Container Apps con autoscaling, ADLS Gen2 in ZRS, soft delete a 30 giorni, backup PostgreSQL a 7 giorni, monitoraggio centralizzato
+- **Hardening per la produzione:** almeno 2 repliche applicative distribuite su Availability Zone, health probe, PostgreSQL zone-redundant HA, deployment ML blue-green con rollback
+- **Disaster Recovery regionale:** seconda region in warm standby, dati replicati, failover governato e testato; target proposti **RPO ≤ 15 minuti / RTO ≤ 60 minuti**
+- **Elasticità:** da 340 aeromobili oggi a 500+ domani aumentando repliche e capacità, senza ridisegnare la piattaforma
+- → Messaggio: "non confondiamo alta disponibilità e disaster recovery: progettiamo, misuriamo e testiamo entrambi"
 
-> "questo è il motivo per cui non ci fermiamo se cade una region"
+> "Dopo aver chiuso le porte con la security, la domanda successiva del CIO è inevitabile: cosa succede quando qualcosa si rompe? La risposta non è 'Azure non cade mai'. La risposta seria è che assumiamo il guasto e progettiamo il servizio perché continui a funzionare o venga ripristinato entro obiettivi misurabili.
+>
+> Partiamo dal livello applicativo. Backend e frontend girano su Container Apps e scalano automaticamente in base al carico. Nel PoC abbiamo scelto intenzionalmente una configurazione economica, da zero a due repliche. Per la produzione il profilo cambia: almeno due repliche sempre attive, distribuzione tra Availability Zone e health probe che rimuovono dal traffico un'istanza non sana. Se un container si arresta, la piattaforma lo sostituisce; se il carico cresce, aggiunge capacità senza intervento manuale. È così che passiamo da 340 a oltre 500 aeromobili senza una nuova architettura.
+>
+> Secondo livello: dati e modello. Il Data Lake usa già storage ZRS, quindi mantiene copie sincrone in zone diverse della stessa region, e il soft delete a 30 giorni protegge dalle cancellazioni accidentali. PostgreSQL oggi ha backup a sette giorni ma, coerentemente con lo stato PoC, non ha ancora high availability né backup geografico: prima del go-live abilitiamo HA zone-redundant e geo-backup. Per il modello RUL adottiamo deployment blue-green: la nuova versione riceve prima traffico controllato, viene confrontata con quella corrente e, se degrada accuratezza o latenza, il rollback è immediato. Questo traffic split è un gate di produzione, non una capacità che dichiariamo già completata.
+>
+> Terzo livello: la perdita di un'intera region. ZRS protegge dal guasto di una zona, non da quello regionale. Per questo il target production prevede una seconda region europea in warm standby, infrastruttura ricreabile dallo stesso Bicep, replica dei dati e una procedura di failover provata periodicamente. Proponiamo due impegni da validare con il business: RPO entro 15 minuti, cioè al massimo 15 minuti di dati da recuperare, e RTO entro 60 minuti, cioè servizio critico ripristinato entro un'ora. Non basta scriverli in una slide: vanno verificati con esercitazioni di disaster recovery e misurati dall'osservabilità centralizzata.
+>
+> Il punto è questo: il PoC dimostra il flusso end-to-end; il production hardening trasforma quel flusso in un servizio affidabile. Non promettiamo che nulla si guasti. Dimostriamo che un guasto di istanza, zona o region ha una risposta progettata, automatizzabile e testabile."
 
 **3D — Pillar WAF: Cost Optimization (2-3 minuti)**
-- Modello di costo: pay-per-use vs. reserved (ML compute, storage tiers)
-- Leve di ottimizzazione: spot instances per training, hot/cool/archive per i dati storici
-- TCO confronto: costo piattaforma vs. costo attuale AOG + doc + ricambi sbagliati
-- Governance costi: budget alerts, cost anomaly detection, tagging strategy
-- → Messaggio: "non è un costo IT, è un investimento con payback misurabile"
+- **Baseline già implementata:** ML serverless rilasciato a fine job, Container Apps da 0 a 2 repliche, PostgreSQL Burstable, capacità AI esplicite e tagging per workload/ambiente/cost center
+- **Ottimizzazione production:** pay-per-use per carichi variabili; reservation o savings plan solo sulla baseline stabile; Spot per training interrompibile; lifecycle hot/cool/archive per lo storico
+- **FinOps:** budget e anomaly alert per ambiente, forecast mensile, owner per ogni risorsa e dashboard di costo unitario
+- **Unit economics:** costo per aeromobile, predizione RUL e task card; confronto con ore AOG, effort documentale e logistica ricambi evitati
+- **Gate finanziario:** il payback viene dichiarato solo dopo aver validato volumi, costo orario AOG e saving realmente attribuibile alla piattaforma
+- → Messaggio: "ottimizziamo il costo per risultato operativo, non il costo della singola risorsa"
 
-> questo è il motivo per cui il CFO non vede un buco nero di costi
+> "Una piattaforma può essere sicura e affidabile, ma se il costo non è prevedibile il CFO la fermerà prima della produzione. La domanda quindi è: quanto costa produrre un risultato utile, non quanto costa tenere accesa una risorsa Azure?
+>
+> Nel PoC abbiamo già eliminato lo spreco più evidente. Il training RUL usa Azure ML serverless: la macchina viene creata per il job e rilasciata al termine. Container Apps scala da zero a due repliche e PostgreSQL usa una SKU Burstable. Anche la capacità dei modelli generativi e degli embedding è dichiarata esplicitamente. Non paghiamo quindi cluster inattivi o risorse prive di un limite progettuale.
+>
+> In produzione non useremo però la stessa leva ovunque. Training e batch restano pay-per-use e possono usare Spot se il job è riprendibile. Sulla baseline stabile valuteremo reservation o savings plan, ma solo dopo aver misurato l'utilizzo. Per i dati: hot per il percorso operativo, cool per lo storico consultato raramente, archive per ciò che conserviamo per obbligo. Spot e lifecycle policy non sono ancora nel PoC: sono gate del production hardening.
+>
+> Poi c'è la governance. Le risorse sono già etichettate per workload, ambiente, owner e cost center; useremo questi tag per budget, anomaly alert e forecast. Al comitato non porteremo soltanto la fattura Azure, ma euro per aeromobile, predizione RUL e task card, collegati a ore AOG evitate, effort documentale e trasferimenti urgenti ridotti.
+>
+> È qui che il TCO diventa una decisione. Confrontiamo investimento, cloud, operation e change management con il valore dei target: AOG da 11 a meno di 3 ore, documentazione meno 55% e disponibilità ricambi più 34%. Non inventiamo una percentuale di ROI: validiamo eventi annui, costo orario AOG e saving attribuibile a HangarMind; poi fissiamo payback e soglia go/no-go.
+>
+> Il CFO non finanzia così un buco nero IT: riceve costi attribuibili, limiti e unit economics confrontabili con il problema. La piattaforma cresce soltanto quando cresce il valore prodotto."
 
 **3E — Pillar WAF: Operational Excellence (1-2 minuti)**
 - Infrastructure as Code: tutto il deploy è Bicep, ripetibile, versionato
