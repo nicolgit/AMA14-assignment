@@ -249,12 +249,36 @@ Enfasi costante: "L'AI propone, l'uomo decide e firma"
 ### Atto 5 — Compliance normativa (minuti 28-32)
 Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REGOLAMENTI:
 
-- Mappa normativa: GDPR + EU AI Act + EASA Part-145 + NIS2 + EU Data Act
-- Come l'architettura risponde a ciascuno (linkare ai pillar dell'Atto 3)
-- Shared responsibility: cosa fa Azure, cosa facciamo noi, cosa fa il cliente MRO
-- EU AI Act: classificazione high-risk, obblighi specifici, timeline 2027
-- Checklist governance: dal design al go-live (già implementata)
-- → Messaggio: "la compliance non è un add-on, è embedded nel design"
+- **GDPR:** data mapping, minimizzazione, base giuridica, DPIA dove richiesta, retention e gestione dei diritti; region Azure EU e DPA supportano la conformità ma non la garantiscono da soli
+- **EU AI Act:** classificazione formale per ciascun sistema in base a intended purpose, ruolo nella decisione e integrazione nel prodotto/processo; perimetro high-risk da confermare con Legal, Quality e Safety
+- **EASA Part-145 / Part-IS:** fonti approvate, revisioni ed effectivity verificabili, segregazione dei ruoli, record keeping e audit trail; AI e RUL non sostituiscono approved maintenance data o certifying staff
+- **NIS2:** risk management, continuità, sicurezza della supply chain cloud, vulnerability management e processo di incident reporting governato
+- **EU Data Act:** portabilità, formati aperti, export testato ed exit strategy per ridurre lock-in e rendere praticabile lo switching
+- **Shared responsibility:** Azure fornisce controlli e attestazioni del cloud; HangarMind implementa controlli applicativi ed evidenze; il cliente MRO mantiene accountability, approvazioni e notifiche non delegabili
+- **Gate di go-live:** compliance matrix con owner/evidenza/stato, AI risk assessment, DPIA se applicabile, validazione Quality Manager, penetration test, test BC/DR ed esercitazione di incident reporting
+- → Messaggio: "non dichiariamo compliant una piattaforma: dimostriamo che ogni obbligo ha un controllo, un owner e un'evidenza"
+
+**Matrice da mostrare in slide**
+
+| Norma | Impatto su HangarMind | Controllo chiave | Evidenza per audit |
+|-------|-----------------------|------------------|--------------------|
+| GDPR | Dati personali di tecnici, utenti e audit log | Minimizzazione, RBAC, retention, DPIA se richiesta | Registro trattamenti, DPIA, access review, purge test |
+| EU AI Act | RUL e Copilot influenzano decisioni tecniche | Risk management, data governance, logging, human oversight, accuracy/robustness | AI risk assessment, model card, test report, override log |
+| EASA Part-145 / Part-IS | Dati manutentivi, task card, CRS e sistemi informativi MRO | Fonti approvate, revision/effectivity gate, firma autorizzata, ISMS | Citation trail, versioni, approvazioni, record immutabili |
+| NIS2 | Resilienza operativa e fornitore cloud critico | Supplier risk, BC/DR, vulnerability e incident management | Risk register, DR report, pentest, incident exercise |
+| EU Data Act | Portabilità e switching del servizio cloud | Export in formati aperti ed exit plan testato | Export test, data inventory, exit runbook |
+
+> "La compliance non è una collezione di loghi sulla slide. È una catena di evidenze. Per ogni obbligo dobbiamo poter mostrare quale controllo lo soddisfa, chi ne risponde e quale prova consegniamo all'auditor.
+>
+> Partiamo dall'aviazione. HangarMind non trasforma una previsione RUL o una risposta generativa in un ordine di manutenzione automatico. Il sistema propone; il personale autorizzato verifica approved maintenance data, revisione ed effectivity, decide e firma. Prompt, fonti, versione del modello, output, correzioni e approvazione restano tracciati. In questo modo l'AI accelera la preparazione della task card, ma non sostituisce il certifying staff né il Certificate of Release to Service.
+>
+> Per l'EU AI Act non applichiamo un'etichetta unica all'intera piattaforma. Classifichiamo separatamente RUL, ottimizzazione ricambi e Copilot in base all'intended purpose, al ruolo nella decisione e all'integrazione nel processo aeronautico. Se un sistema ricade nell'high-risk, il percorso include risk management, data governance, documentazione tecnica, logging, supervisione umana, accuratezza, robustezza e cybersecurity. La classificazione finale e la relativa timeline diventano un gate con Legal, Quality e Safety, non un claim architetturale.
+>
+> GDPR, NIS2 ed EU Data Act aggiungono altri tre piani. Per il GDPR censiamo i dati personali, minimizziamo ciò che raccogliamo, definiamo base giuridica e retention ed eseguiamo la DPIA quando richiesta. Per NIS2 includiamo Azure nella supply-chain risk assessment, testiamo continuità e disaster recovery e prepariamo un processo di notifica incidenti. Per il Data Act rendiamo esportabili dati e metadati in formati aperti e proviamo l'exit plan: la portabilità deve funzionare, non soltanto essere prevista dal contratto.
+>
+> Infine, la responsabilità resta condivisa ma non diluita. Microsoft protegge e certifica l'infrastruttura Azure; il team HangarMind configura identità, rete, logging e controlli applicativi; il MRO resta accountable per approvazioni, record keeping, ISMS e notifiche alle autorità. Prima del go-live chiediamo evidenze precise: compliance matrix chiusa, AI risk assessment, DPIA se applicabile, validazione del Quality Manager, penetration test, prova BC/DR ed esercitazione di incident reporting.
+>
+> Quindi non vi chiedo di credere che HangarMind sia compliant perché gira su Azure. Vi mostro come arriviamo alla conformità: obbligo, controllo, owner, evidenza e approvazione. La compliance è embedded nel design, ma diventa reale soltanto quando è verificata."
 
 ### Atto 6 — Il ritorno e la call-to-action (minuti 32-40)
 - Ritorno narrativo: "Torniamo all'Hangar 7, sei mesi dopo..."
