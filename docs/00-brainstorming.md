@@ -30,14 +30,14 @@
 > Vi avverto: sono un tecnico, e tra poco vi mostrerò diagrammi e architetture.
 > Ma prima di aprire il cofano, voglio partire dal motivo per cui lo stiamo facendo.
 > 
-> Il nostro MRO ha un problema strutturale: quando un motore si guasta senza preavviso, perdiamo in media 11 ore per rimettere l'aereo in linea. Il ricambio è nel magazzino sbagliato. La procedura è nella testa di un ingegnere che va in pensione. La documentazione EASA richiede ore di compilazione manuale.
+> Il nostro MRO - **maintenance, repair, and overhaul provider** - ha un problema strutturale: quando un motore si guasta senza preavviso, perdiamo in media 11 ore per rimettere l'aereo in linea. Il ricambio è nel magazzino sbagliato. La procedura è nella testa di un ingegnere che va in pensione. La documentazione EASA - **European Union Aviation Safety Agency** - richiede ore di compilazione manuale.
 > 
 > La piattaforma che vi presento risolve questi tre problemi insieme.
 
 **Il fattore umano (minuti 1-3)**
 
-> "Per dare un volto al problema: Jean-Pierre ha 37 anni di esperienza sui motori CFM56. Tra 14 mesi va in pensione.
-> Con lui se ne va il sapere di come diagnosticare un flutter anomalo che nessun manuale copre.
+> "Per dare un volto al problema: Jean-Pierre ha 37 anni di esperienza sui motori **CFM56**. Tra 14 mesi va in pensione.
+> Con lui se ne va il sapere di come diagnosticare un flutter anomalo (vibrazione oscillazione...) che nessun manuale copre.
 > Oggi quel sapere vive nella sua testa. Domani, dove vivrà?"
 
 **I numeri del problema (minuti 3-5)**
@@ -50,10 +50,6 @@
 **Ponte verso l'Atto 2 (minuti 5-7)**
 - "Non è un problema tecnico. È un problema di business."
 - Contestualizzazione: perché adesso, perché serve una piattaforma integrata (non cinque tool separati)
-
-> **⚠️WARNING⚠️**: Non posso garantirvi oggi che l’AOG passerà automaticamente da 11 a meno di 3 ore. Quello è il target di business assegnato al programma, non un risultato già dimostrato. L’architettura rende possibile intervenire sulle cause del ritardo, ma il risultato dipende anche da ricambi, personale, processi e qualità dei dati.
-> 
-> **Quello che posso garantirvi è un percorso misurabile**: baseline iniziale, pilot controllato, KPI concordati e gate go/no-go. Prima estendiamo la soluzione a uno o due hangar, confrontiamo gli eventi trattati con casi omogenei e misuriamo AOG, disponibilità ricambi, tempo di compilazione e first-time-fix. Solo se il miglioramento è statisticamente e operativamente significativo procediamo allo scale-out. 
 
 ### Atto 2 — La visione: da reattivo a predittivo (minuti 7-11)
 
@@ -72,7 +68,7 @@
 
 > "Passiamo da un modello in cui il guasto detta i tempi a uno in cui il dato anticipa il guasto.
 > Da un modello in cui il tecnico cerca il ricambio a uno in cui il ricambio aspetta il tecnico.
-> Da un modello in cui l'esperto compila a mano a uno in cui l'AI propone e l'esperto valida."
+> Da un modello in cui l'esperto compila a mano a uno in cui l'AI propone e l'esperto valida e corregge e garantisce la qualità."
 
 **Le quattro leve di HangarMind (1 slide, schema visivo)**
 
@@ -105,6 +101,10 @@ Evento manutenzione → [3. AUTOMATIZZA: EASA documentation]
 | First-time-fix rate | 71% | 89% | **+18pp** |
 
 > "Questi non sono target aspirazionali. Sono i numeri che l'architettura che vi mostro tra un minuto è disegnata per raggiungere."
+
+> **⚠️WARNING⚠️**: Non posso garantirvi oggi che l’AOG passerà automaticamente da 11 a meno di 3 ore. Quello è il target di business assegnato al programma, non un risultato già dimostrato. L’architettura rende possibile intervenire sulle cause del ritardo, ma il risultato dipende anche da ricambi, personale, processi e qualità dei dati.
+> 
+> **Quello che posso garantirvi è un percorso misurabile**: baseline iniziale, pilot controllato, KPI concordati e gate go/no-go. Prima estendiamo la soluzione a uno o due hangar, confrontiamo gli eventi trattati con casi omogenei e misuriamo AOG, disponibilità ricambi, tempo di compilazione e first-time-fix. Solo se il miglioramento è statisticamente e operativamente significativo procediamo allo scale-out. 
 
 **Chiusura Atto 2 — ponte verso l'architettura:**
 > "Ora sapete COSA vogliamo ottenere e PERCHÉ. Vi mostro il COME: l'architettura della piattaforma."
@@ -425,6 +425,4 @@ Separato dalla security tecnica (già coperta nell'Atto 3B), qui si parla di REG
 | 38-40 | 6 | Call-to-action + chiusura | 1 | Tutti |
 | | | **Totale** | **~28 slide** | |
 
----
 
-*Prossimo passo: validare questa struttura, poi passare ai contenuti tecnici slide per slide.*
