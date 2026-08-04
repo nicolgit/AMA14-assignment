@@ -10,6 +10,21 @@ param tags object = {}
 @description('Name of an existing Log Analytics workspace (same resource group) used for container logs.')
 param logAnalyticsWorkspaceName string
 
+@description('Resource ID of the delegated subnet used by the Container Apps environment. Leave empty to deploy without VNet integration.')
+param infrastructureSubnetId string = ''
+
+@description('Name of the Azure Container Registry that stores application images.')
+param containerRegistryName string
+
+@description('Login server of the Azure Container Registry that stores application images.')
+param containerRegistryLoginServer string
+
+@description('Resource ID of the user-assigned identity used only to pull images from ACR.')
+param containerRegistryPullIdentityId string
+
+@description('Principal ID of the user-assigned identity used only to pull images from ACR.')
+param containerRegistryPullPrincipalId string
+
 @description('Container image for the backend API.')
 param backendImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
@@ -40,6 +55,9 @@ param backendUserAssignedIdentityId string = ''
 @description('Client ID of the backend managed identity (used by the app to acquire an Entra token).')
 param backendUserAssignedIdentityClientId string = ''
 
+@description('Principal ID of the backend managed identity, used for data-plane role assignments.')
+param backendPrincipalId string = ''
+
 @description('PostgreSQL server FQDN the backend connects to.')
 param postgresFqdn string = ''
 
@@ -48,6 +66,12 @@ param postgresDatabaseName string = ''
 
 @description('PostgreSQL Entra username for the backend (the managed identity name).')
 param postgresUser string = ''
+
+@description('Name of the Data Lake storage account used by the backend API.')
+param dataLakeStorageAccountName string = ''
+
+@description('Blob endpoint of the Data Lake storage account used by the backend API.')
+param dataLakeBlobEndpoint string = ''
 
 @description('Application Insights connection string. Shared by all telemetry-capable services so traces land in one instance.')
 param applicationInsightsConnectionString string = ''
@@ -74,12 +98,46 @@ param azureSpeechEndpoint string = ''
 param azureSpeechRegion string = ''
 
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
-var environmentName = toLower(take('cae-${nameSeedSafe}', 32))
-var backendAppName = toLower(take('api-${nameSeedSafe}', 32))
-var frontendAppName = toLower(take('web-${nameSeedSafe}', 32))
+var usesCustomVnet = !empty(infrastructureSubnetId)
+// An environment's network type is immutable. The suffix creates a parallel,
+// VNet-integrated environment when migrating from the original public PoC.
+var environmentName = toLower(take(usesCustomVnet ? 'cae-vnet-${nameSeedSafe}' : 'cae-${nameSeedSafe}', 32))
+var backendAppName = toLower(take(usesCustomVnet ? 'api-vnet-${nameSeedSafe}' : 'api-${nameSeedSafe}', 32))
+var frontendAppName = toLower(take(usesCustomVnet ? 'web-vnet-${nameSeedSafe}' : 'web-${nameSeedSafe}', 32))
 
 resource law 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: logAnalyticsWorkspaceName
+}
+
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' existing = {
+  name: containerRegistryName
+}
+
+resource dataLakeStorage 'Microsoft.Storage/storageAccounts@2024-01-01' existing = if (!empty(dataLakeStorageAccountName)) {
+  name: dataLakeStorageAccountName
+}
+
+var acrPullRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+var storageBlobDataReaderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')
+
+resource containerRegistryPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, containerRegistryPullPrincipalId, acrPullRoleDefinitionId)
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: acrPullRoleDefinitionId
+    principalId: containerRegistryPullPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource backendStorageBlobDataReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(backendPrincipalId) && !empty(dataLakeStorageAccountName)) {
+  name: guid(dataLakeStorage.id, backendPrincipalId, storageBlobDataReaderRoleDefinitionId)
+  scope: dataLakeStorage
+  properties: {
+    roleDefinitionId: storageBlobDataReaderRoleDefinitionId
+    principalId: backendPrincipalId
+    principalType: 'ServicePrincipal'
+  }
 }
 
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
@@ -87,6 +145,10 @@ resource environment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   location: location
   tags: tags
   properties: {
+    vnetConfiguration: !empty(infrastructureSubnetId) ? {
+      infrastructureSubnetId: infrastructureSubnetId
+      internal: false
+    } : null
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
@@ -102,6 +164,7 @@ var hasAppInsights = !empty(applicationInsightsConnectionString)
 var hasAzureOpenAi = !empty(azureOpenAiEndpoint)
 var hasAzureSearch = !empty(azureSearchEndpoint)
 var hasAzureSpeech = !empty(azureSpeechEndpoint)
+var frontendOrigin = 'https://${frontendAppName}.${environment.properties.defaultDomain}'
 
 var appInsightsEnv = hasAppInsights ? [
   {
@@ -122,6 +185,14 @@ var backendEnv = concat([
   {
     name: 'POSTGRES_USER'
     value: postgresUser
+  }
+  {
+    name: 'BLOB_STORAGE_URL'
+    value: dataLakeBlobEndpoint
+  }
+  {
+    name: 'CORS_ORIGINS'
+    value: frontendOrigin
   }
 ], hasBackendIdentity ? [
   {
@@ -147,7 +218,7 @@ var backendEnv = concat([
     value: azureSearchEndpoint
   }
   {
-    name: 'AZURE_SEARCH_INDEX_NAME'
+    name: 'AZURE_SEARCH_INDEX'
     value: azureSearchIndexName
   }
 ] : [], hasAzureSpeech ? [
@@ -170,6 +241,7 @@ resource backend 'Microsoft.App/containerApps@2024-03-01' = {
     type: 'UserAssigned'
     userAssignedIdentities: {
       '${backendUserAssignedIdentityId}': {}
+      '${containerRegistryPullIdentityId}': {}
     }
   } : {
     type: 'None'
@@ -177,6 +249,13 @@ resource backend 'Microsoft.App/containerApps@2024-03-01' = {
   properties: {
     managedEnvironmentId: environment.id
     configuration: {
+      activeRevisionsMode: 'Single'
+      registries: [
+        {
+          server: containerRegistryLoginServer
+          identity: containerRegistryPullIdentityId
+        }
+      ]
       ingress: {
         external: true
         targetPort: backendTargetPort
@@ -202,6 +281,9 @@ resource backend 'Microsoft.App/containerApps@2024-03-01' = {
       }
     }
   }
+  dependsOn: [
+    containerRegistryPullRole
+  ]
 }
 
 // Frontend SPA container app (public entry point).
@@ -209,9 +291,22 @@ resource frontend 'Microsoft.App/containerApps@2024-03-01' = {
   name: frontendAppName
   location: location
   tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${containerRegistryPullIdentityId}': {}
+    }
+  }
   properties: {
     managedEnvironmentId: environment.id
     configuration: {
+      activeRevisionsMode: 'Single'
+      registries: [
+        {
+          server: containerRegistryLoginServer
+          identity: containerRegistryPullIdentityId
+        }
+      ]
       ingress: {
         external: true
         targetPort: frontendTargetPort
@@ -228,13 +323,8 @@ resource frontend 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
-          // The SPA reaches the backend via its public FQDN.
-          env: concat([
-            {
-              name: 'BACKEND_API_URL'
-              value: 'https://${backend.properties.configuration.ingress.fqdn}'
-            }
-          ], appInsightsEnv)
+          // Vite embeds the API URL at build time; only telemetry remains runtime configuration.
+          env: appInsightsEnv
         }
       ]
       scale: {
@@ -243,6 +333,9 @@ resource frontend 'Microsoft.App/containerApps@2024-03-01' = {
       }
     }
   }
+  dependsOn: [
+    containerRegistryPullRole
+  ]
 }
 
 output containerAppsEnvironmentName string = environment.name

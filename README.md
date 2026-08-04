@@ -87,3 +87,51 @@ The environment is deployed from the subscription-scoped Bicep template in `bice
 	```
 
 	Check `frontendSpaFqdn`, `backendApiFqdn`, `mlWorkspaceName`, `postgresFqdn`, `engineeringSearchEndpoint`, and `engineeringAiServicesEndpoint` to confirm that the expected services were created.
+
+### Application deployment from a development machine
+
+Container Apps pulls private images from ACR with a dedicated user-assigned managed identity. The infrastructure deployment grants that identity `AcrPull`, integrates the Container Apps environment with the spoke VNet, and configures both apps in single revision mode.
+
+The original PoC Container Apps environment was created without a custom VNet, and Azure doesn't allow changing an environment's network type. The first deployment of this configuration therefore creates parallel `cae-vnet-*`, `api-vnet-*`, and `web-vnet-*` resources. The original quickstart apps remain available until the new endpoints have been validated and can then be removed.
+
+Run the infrastructure deployment once, or whenever its Bicep configuration changes. Always reuse the `resourceNameSeed` of the existing environment so resource names remain stable:
+
+```powershell
+az deployment sub what-if `
+	--name deploy `
+	--location francecentral `
+	--template-file .\bicep\deploy.bicep `
+	--parameters resourceNameSeed="<existing-seed>" `
+							 deployerObjectId=$deployerObjectId `
+							 deployerPrincipalName=$deployerPrincipalName `
+							 postgresAdminPassword="<strong-password>"
+
+az deployment sub create `
+	--name deploy `
+	--location francecentral `
+	--template-file .\bicep\deploy.bicep `
+	--parameters resourceNameSeed="<existing-seed>" `
+							 deployerObjectId=$deployerObjectId `
+							 deployerPrincipalName=$deployerPrincipalName `
+							 postgresAdminPassword="<strong-password>"
+```
+
+Deploy the current API and SPA source from the repository root. ACR Tasks performs both Linux builds, pushes immutable images, and the script updates the two Container Apps sequentially with smoke tests:
+
+```powershell
+.\powershell\deploy-apps.ps1
+```
+
+The default tag combines the current Git commit and a UTC timestamp. Supply a tag when needed:
+
+```powershell
+.\powershell\deploy-apps.ps1 -Tag "manual-20260804-01"
+```
+
+Rollback both applications to an existing immutable tag without rebuilding:
+
+```powershell
+.\powershell\deploy-apps.ps1 -RollbackTag "<previous-tag>"
+```
+
+The script resolves registry and application names from the subscription deployment outputs. Pass `-DeploymentName` when the Bicep deployment isn't named `deploy`; `-AcrName`, `-BackendAppName`, and `-FrontendAppName` can override individual values explicitly.

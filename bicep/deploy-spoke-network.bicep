@@ -22,6 +22,12 @@ param privateEndpointsSubnetName string = 'private-endpoints'
 @description('Private endpoints subnet address prefix for the spoke.')
 param privateEndpointsSubnetAddressPrefix string = '10.13.2.0/26'
 
+@description('Container Apps infrastructure subnet name.')
+param containerAppsSubnetName string = 'container-apps-infrastructure'
+
+@description('Container Apps infrastructure subnet address prefix. A /23 is required by a Consumption-only environment.')
+param containerAppsSubnetAddressPrefix string = '10.13.4.0/23'
+
 @description('GatewaySubnet address prefix for the Virtual Network Gateway. Must be /27 or larger; name must stay GatewaySubnet.')
 param gatewaySubnetAddressPrefix string = '10.13.0.0/27'
 
@@ -109,6 +115,20 @@ resource spokeVnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         properties: {
           addressPrefix: privateEndpointsSubnetAddressPrefix
           privateEndpointNetworkPolicies: 'Disabled'
+        }
+      }
+      {
+        name: containerAppsSubnetName
+        properties: {
+          addressPrefix: containerAppsSubnetAddressPrefix
+          delegations: [
+            {
+              name: 'Microsoft.App.environments'
+              properties: {
+                serviceName: 'Microsoft.App/environments'
+              }
+            }
+          ]
         }
       }
       {
@@ -305,6 +325,7 @@ output spokeVirtualNetworkName string = spokeVnet.name
 output defaultSubnetName string = defaultSubnetName
 output privateEndpointsSubnetName string = privateEndpointsSubnetName
 output privateEndpointsSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', spokeVnet.name, privateEndpointsSubnetName)
+output containerAppsSubnetId string = resourceId('Microsoft.Network/virtualNetworks/subnets', spokeVnet.name, containerAppsSubnetName)
 output dnsResolverName string = dnsResolver.name
 output dnsResolverInboundIpAddress string = dnsResolverInboundIp
 output vpnGatewayName string = vpnGateway.name

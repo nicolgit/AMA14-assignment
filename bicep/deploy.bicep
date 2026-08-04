@@ -86,7 +86,7 @@ param postgresAdminLogin string = 'nicola'
 
 @description('PostgreSQL administrator password. Pass at deploy time (e.g. --parameters postgresAdminPassword=...); do not commit.')
 @secure()
-param postgresAdminPassword string = 'PassGres123!'
+param postgresAdminPassword string
 
 @description('Common tags applied to all resources.')
 param tags object = {
@@ -227,12 +227,20 @@ module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps && d
     resourceNameSeed: resourceNameSeed
     tags: tags
     logAnalyticsWorkspaceName: mlplatform.?outputs.logAnalyticsWorkspaceName ?? ''
+    infrastructureSubnetId: deployPrivateEndpoints && deploySpokeNetwork ? spokeNetwork.?outputs.containerAppsSubnetId ?? '' : ''
+    containerRegistryName: acr.?outputs.containerRegistryName ?? ''
+    containerRegistryLoginServer: acr.?outputs.containerRegistryLoginServer ?? ''
+    containerRegistryPullIdentityId: backendIdentity.outputs.containerRegistryPullIdentityResourceId
+    containerRegistryPullPrincipalId: backendIdentity.outputs.containerRegistryPullIdentityPrincipalId
     backendUserAssignedIdentityId: backendIdentity.outputs.identityResourceId
     backendUserAssignedIdentityClientId: backendIdentity.outputs.clientId
+    backendPrincipalId: backendIdentity.outputs.principalId
     applicationInsightsConnectionString: mlplatform.?outputs.applicationInsightsConnectionString ?? ''
     postgresFqdn: deployPostgres ? postgres.?outputs.postgresFqdn ?? '' : ''
     postgresDatabaseName: deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''
     postgresUser: backendIdentity.outputs.identityName
+    dataLakeStorageAccountName: datalake.outputs.storageAccountName
+    dataLakeBlobEndpoint: datalake.outputs.primaryBlobEndpoint
     azureOpenAiEndpoint: deployEngineeringAi ? engineeringAi.?outputs.aiServicesEndpoint ?? '' : ''
     azureOpenAiChatDeployment: deployEngineeringAi ? engineeringAi.?outputs.chatDeploymentName ?? '' : ''
     azureOpenAiEmbeddingDeployment: deployEngineeringAi ? engineeringAi.?outputs.embeddingDeploymentName ?? '' : ''
@@ -344,5 +352,7 @@ output engineeringSearchEndpoint string = deployEngineeringAi ? engineeringAi.?o
 output engineeringSearchIndexName string = deployEngineeringAi ? engineeringAi.?outputs.searchIndexName ?? '' : ''
 output engineeringSearchManagedIdentityPrincipalId string = deployEngineeringAi ? engineeringAi.?outputs.searchManagedIdentityPrincipalId ?? '' : ''
 output containerAppsEnvironmentName string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.containerAppsEnvironmentName ?? '' : ''
+output backendApiAppName string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.backendAppName ?? '' : ''
 output backendApiFqdn string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.backendFqdn ?? '' : ''
+output frontendSpaAppName string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.frontendAppName ?? '' : ''
 output frontendSpaFqdn string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.frontendFqdn ?? '' : ''
