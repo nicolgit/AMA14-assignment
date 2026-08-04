@@ -86,7 +86,7 @@ param postgresAdminLogin string = 'nicola'
 
 @description('PostgreSQL administrator password. Pass at deploy time (e.g. --parameters postgresAdminPassword=...); do not commit.')
 @secure()
-param postgresAdminPassword string
+param postgresAdminPassword string = 'PassGres123!'
 
 @description('Common tags applied to all resources.')
 param tags object = {
