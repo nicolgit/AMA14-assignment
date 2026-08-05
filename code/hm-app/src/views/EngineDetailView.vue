@@ -290,6 +290,10 @@ const urgencyLevelText = computed(() => {
   return `Level ${maintenanceUrgency.value.level}`
 })
 
+const shouldVerifySparePartAvailability = computed(() =>
+  (maintenanceUrgency.value?.level ?? 0) >= 2,
+)
+
 const predictionMappingText = computed(() => {
   if (!prediction.value) return 'No prediction row'
   if (Number.isNaN(engineDataId.value)) return `Model unit ${prediction.value.engine_id}`
@@ -488,6 +492,16 @@ onMounted(loadEngine)
               <dd :class="urgencyClass">
                 {{ riskProbability !== null ? `${(riskProbability * 100).toFixed(1)}%` : '—' }}
                 <span class="evidence-sub">{{ urgencyBand }} urgency · {{ urgencyLevelText }}</span>
+                <RouterLink
+                  v-if="shouldVerifySparePartAvailability"
+                  class="spare-availability-link"
+                  :to="{
+                    name: 'supply-engine-decision',
+                    params: { aircraftid: aircraftId, engineid: engineId },
+                  }"
+                >
+                  Verify spare part availability
+                </RouterLink>
               </dd>
             </div>
             <div class="field evidence-field">
@@ -801,6 +815,23 @@ onMounted(loadEngine)
 
 .evidence-field--wide {
   grid-column: 1 / -1;
+}
+
+.spare-availability-link {
+  align-self: center;
+  margin-top: 8px;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.spare-availability-link:hover {
+  background: #1d4ed8;
 }
 
 .rul-evidence-panel .field dd.evidence-value--high {
