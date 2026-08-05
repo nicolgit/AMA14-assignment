@@ -20,6 +20,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $env:PYTHONUTF8 = '1'
+$deploymentNameWasProvided = $PSBoundParameters.ContainsKey('DeploymentName')
 
 function Invoke-AzureCli {
     param(
@@ -33,6 +34,27 @@ function Invoke-AzureCli {
     }
 
     return ($output | Out-String).Trim()
+}
+
+function Resolve-LatestDeploymentName {
+    $datePart = Get-Date -AsUTC -Format 'yyMMdd'
+    $namePattern = "^deploy-$datePart-\d{4}$"
+    $json = Invoke-AzureCli @(
+        'deployment', 'sub', 'list',
+        '--query', "[?properties.provisioningState=='Succeeded'].{name:name,timestamp:properties.timestamp}",
+        '--output', 'json'
+    )
+    $deployments = @($json | ConvertFrom-Json) |
+        Where-Object { $_.name -match $namePattern } |
+        Sort-Object { [DateTimeOffset]$_.timestamp } -Descending
+
+    if ($deployments.Count -eq 0) {
+        throw "No successful subscription deployment matching 'deploy-$datePart-HHmm' was found today. Pass -DeploymentName explicitly."
+    }
+
+    $resolvedName = [string]$deployments[0].name
+    Write-Host "Using latest successful deployment from today: '$resolvedName'."
+    return $resolvedName
 }
 
 function Resolve-SingleName {
@@ -102,6 +124,10 @@ if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
 }
 
 Invoke-AzureCli @('account', 'show', '--output', 'none') | Out-Null
+
+if (-not $deploymentNameWasProvided) {
+    $DeploymentName = Resolve-LatestDeploymentName
+}
 
 $deploymentOutputsJson = Invoke-AzureCli @('deployment', 'sub', 'show', '--name', $DeploymentName, '--query', 'properties.outputs', '--output', 'json')
 $deploymentOutputs = $deploymentOutputsJson | ConvertFrom-Json
