@@ -46,6 +46,11 @@ interface SupplyDecisionResponse {
   decisions: SupplyPartDecision[]
 }
 
+interface PendingPartRequest {
+  partNumber: string
+  option: SupplyOption
+}
+
 interface FormPart {
   part_number: string
   quantity: number
@@ -121,6 +126,8 @@ const parts = ref<FormPart[]>([
 const loading = ref(false)
 const error = ref('')
 const result = ref<SupplyDecisionResponse | null>(null)
+const pendingPartRequest = ref<PendingPartRequest | null>(null)
+const partRequestSucceeded = ref(false)
 const route = useRoute()
 const router = useRouter()
 
@@ -171,6 +178,37 @@ function aircraftLabel(aircraft: AircraftOption): string {
 
 function sparePartLabel(part: SparePartOption): string {
   return `${part.part_number} - ${part.name}`
+}
+
+function sparePartLabelByNumber(partNumber: string): string {
+  const part = spareParts.value.find((option) => option.part_number === partNumber)
+  return part ? sparePartLabel(part) : partNumber
+}
+
+function partRequestSummary(request: PendingPartRequest): string {
+  const partLabel = sparePartLabelByNumber(request.partNumber)
+  const destination = locationLabel(result.value?.location_id ?? locationId.value)
+  const eta = request.option.eta_cycles.toFixed(2)
+
+  if (request.option.decision === 'transfer') {
+    return `Do you want to request the transfer of component ${partLabel} from the warehouse at ${originLabel(request.option.selected_origin)} to the destination airport ${destination} (ETA ${eta} cycles)?`
+  }
+
+  return `Do you want to start a purchase order for component ${partLabel}, to be delivered to ${destination} (ETA ${eta} cycles)?`
+}
+
+function openPartRequest(partNumber: string, option: SupplyOption) {
+  pendingPartRequest.value = { partNumber, option }
+  partRequestSucceeded.value = false
+}
+
+function confirmPartRequest() {
+  partRequestSucceeded.value = true
+}
+
+function closePartRequest() {
+  pendingPartRequest.value = null
+  partRequestSucceeded.value = false
 }
 
 function toInputText(value: string | number | null | undefined): string {
@@ -669,7 +707,7 @@ onMounted(async () => {
       <div class="decision-stack">
         <article v-for="item in result.decisions" :key="item.part_number" class="decision-card">
           <header class="decision-header">
-            <h3>{{ item.part_number }} x{{ item.quantity }}</h3>
+            <h3>{{ sparePartLabelByNumber(item.part_number) }} x{{ item.quantity }}</h3>
             <span :class="priorityClass(item.priority_class)">{{ item.decision.toUpperCase() }}</span>
           </header>
 
@@ -700,7 +738,19 @@ onMounted(async () => {
                   <td>{{ opt.eta_cycles.toFixed(2) }}</td>
                   <td>{{ opt.total_cost.toFixed(2) }}</td>
                   <td>{{ opt.score.toFixed(2) }}</td>
-                  <td>{{ opt.feasible ? 'yes' : 'no' }}</td>
+                  <td>
+                    <div class="feasible-cell">
+                      <span>{{ opt.feasible ? 'yes' : 'no' }}</span>
+                      <button
+                        v-if="opt.eta_cycles > 0"
+                        type="button"
+                        class="btn request-part-btn"
+                        @click="openPartRequest(item.part_number, opt)"
+                      >
+                        Request part
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -708,6 +758,26 @@ onMounted(async () => {
         </article>
       </div>
     </section>
+
+    <div v-if="pendingPartRequest" class="modal-backdrop" @click.self="closePartRequest">
+      <section class="request-modal" role="dialog" aria-modal="true" aria-labelledby="request-part-title">
+        <template v-if="!partRequestSucceeded">
+          <h2 id="request-part-title">Request part</h2>
+          <p>{{ partRequestSummary(pendingPartRequest) }}</p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn--ghost" @click="closePartRequest">Cancel</button>
+            <button type="button" class="btn" @click="confirmPartRequest">OK</button>
+          </div>
+        </template>
+        <template v-else>
+          <h2 id="request-part-title">Request submitted</h2>
+          <p>Request submitted successfully.</p>
+          <div class="modal-actions">
+            <button type="button" class="btn" @click="closePartRequest">OK</button>
+          </div>
+        </template>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -916,6 +986,54 @@ select {
   text-align: left;
   border-bottom: 1px solid var(--border);
   padding: 8px 6px;
+}
+
+.feasible-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.request-part-btn {
+  padding: 6px 9px;
+  font-size: 0.78rem;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.request-modal {
+  width: min(520px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  padding: 20px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.request-modal h2 {
+  margin-bottom: 12px;
+}
+
+.request-modal p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 @media (max-width: 768px) {
