@@ -1,6 +1,6 @@
 # Aircraft Maintenance Manual (AMM) — Sample Extract (Synthetic / PoC Only)
 
-> **DISCLAIMER — NOT APPROVED DATA.** This document is a **synthetic, fictional** AMM extract created solely to develop and test a Proof of Concept (RAG / Gen AI assistant). It is **NOT approved maintenance data**, must **never** be used on a real aircraft or component, and does not represent any real OEM publication. All values, limits, part numbers and task references are invented.
+
 
 ---
 

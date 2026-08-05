@@ -1,6 +1,5 @@
 # Task Card TC-0004 — Engine Oil Filter Inspection / Chip Detection (Routine)
 
-> **DISCLAIMER — NOT APPROVED DATA.** Synthetic/fictional task card for PoC only. Not for use on real aircraft. Approved data references point to the synthetic AMM extract [sample-amm-engine.md](sample-amm-engine.md).
 
 | Field | Value |
 |-------|-------|
