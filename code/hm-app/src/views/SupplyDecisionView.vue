@@ -128,6 +128,24 @@ function normalizeRouteAircraftId(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function normalizeRouteEngineId(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function replaceSupplyRoute(selectedAircraftId: string, engineId?: string | null) {
+  if (engineId) {
+    return router.replace({
+      name: 'supply-engine-decision',
+      params: { aircraftid: selectedAircraftId, engineid: engineId },
+    })
+  }
+
+  return router.replace({
+    name: 'supply-decision',
+    params: { aircraftid: selectedAircraftId },
+  })
+}
+
 function locationLabel(locationCode: string | null): string {
   if (!locationCode) return 'Unknown airport'
   const location = locations.value.find((item) => item.location_code === locationCode)
@@ -171,6 +189,7 @@ function syncDecisionInputsFromSelectedEngine() {
 function handleEngineSelection(engineId: string) {
   selectedEngineId.value = engineId
   syncDecisionInputsFromSelectedEngine()
+  void replaceSupplyRoute(aircraftId.value, engineId)
 }
 
 async function loadLocations() {
@@ -373,9 +392,14 @@ async function loadEngineHealthForAircraft(selectedAircraftId: string) {
     )
 
     if (rows.length > 0) {
-      const fallbackSelectedEngineId = rows[0].engineId
-      selectedEngineId.value = fallbackSelectedEngineId
+      const routeEngineId = normalizeRouteEngineId(route.params.engineid)
+      const routeMatchesAircraft = normalizeRouteAircraftId(route.params.aircraftid) === selectedAircraftId
+      const selectedId = routeMatchesAircraft && rows.some((row) => row.engineId === routeEngineId)
+        ? routeEngineId
+        : rows[0].engineId
+      selectedEngineId.value = selectedId
       syncDecisionInputsFromSelectedEngine()
+      void replaceSupplyRoute(selectedAircraftId, selectedId)
     }
   } finally {
     loadingEngineHealth.value = false
@@ -484,7 +508,7 @@ function priorityClass(priority: 'RED' | 'YELLOW' | 'GREEN') {
 watch(aircraftId, (selectedId, previousId) => {
   if (!selectedId || selectedId === previousId) return
   if (normalizeRouteAircraftId(route.params.aircraftid) !== selectedId) {
-    router.replace({ name: 'supply-decision', params: { aircraftid: selectedId } })
+    void replaceSupplyRoute(selectedId)
   }
   void syncFromAircraftSelection(selectedId)
   void loadEngineHealthForAircraft(selectedId)
@@ -496,6 +520,21 @@ watch(
     const normalized = normalizeRouteAircraftId(nextAircraftId)
     if (normalized && normalized !== aircraftId.value) {
       aircraftId.value = normalized
+    }
+  },
+)
+
+watch(
+  () => route.params.engineid,
+  (nextEngineId) => {
+    const normalized = normalizeRouteEngineId(nextEngineId)
+    if (
+      normalized &&
+      normalized !== selectedEngineId.value &&
+      enginesForSelectedAircraft.value.some((engine) => engine.engineid === normalized)
+    ) {
+      selectedEngineId.value = normalized
+      syncDecisionInputsFromSelectedEngine()
     }
   },
 )
@@ -520,7 +559,7 @@ onMounted(async () => {
       <div class="form-grid">
         <label>
           Aircraft ID
-          <select v-model="aircraftId" @change="router.replace({ name: 'supply-decision', params: { aircraftid: aircraftId } })">
+          <select v-model="aircraftId">
             <option
               v-for="aircraft in aircrafts"
               :key="aircraft.aircraft_id"

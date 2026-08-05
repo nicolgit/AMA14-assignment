@@ -94,10 +94,6 @@ function handleClick(fn: MroFunction) {
     alert(`"${fn.title}" is a placeholder module — not yet implemented.`)
   }
 }
-
-function planProcurement() {
-  router.push({ name: 'supply-decision' })
-}
 </script>
 
 <template>
@@ -108,7 +104,6 @@ function planProcurement() {
         <h1>Hangar Mind</h1>
       </div>
       <p class="tagline">Intelligent Aircraft Maintenance</p>
-      <button class="procurement-btn" @click="planProcurement">Plan a procurement</button>
     </header>
 
     <main class="dashboard">
@@ -187,21 +182,6 @@ function planProcurement() {
   font-size: 1.1rem;
   color: var(--accent);
   font-weight: 500;
-}
-
-.procurement-btn {
-  margin-top: 18px;
-  border: 1px solid var(--accent-border);
-  background: var(--accent);
-  color: #fff;
-  border-radius: 999px;
-  padding: 10px 18px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.procurement-btn:hover {
-  filter: brightness(1.05);
 }
 
 /* Dashboard */

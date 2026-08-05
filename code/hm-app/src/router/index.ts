@@ -19,6 +19,11 @@ const router = createRouter({
       component: EasaDocDetailView,
       props: true,
     },
+    {
+      path: '/supply/:aircraftid/engine/:engineid',
+      name: 'supply-engine-decision',
+      component: SupplyDecisionView,
+    },
     { path: '/supply/:aircraftid?', name: 'supply-decision', component: SupplyDecisionView },
     {
       path: '/aircraft/:aircraftid',

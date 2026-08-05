@@ -34,11 +34,11 @@ cd code/hm-api
 
 # Start with hot-reload - DEVELOPMENT
 $env:CORS_ORIGINS = "http://localhost:5173"
-$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0804.postgres.database.azure.com:5432/hangarmind"
-$env:BLOB_STORAGE_URL = "https://lakeamamrodeve0804.blob.core.windows.net"
-$env:AZURE_OPENAI_ENDPOINT = "https://aiamamrodeve0804.cognitiveservices.azure.com"
+$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0805.postgres.database.azure.com:5432/hangarmind"
+$env:BLOB_STORAGE_URL = "https://lakeamamrodeve0805.blob.core.windows.net"
+$env:AZURE_OPENAI_ENDPOINT = "https://aiamamrodeve0805.cognitiveservices.azure.com"
 $env:AZURE_OPENAI_CHAT_DEPLOYMENT = "gpt-5-6-sol"
-$env:AZURE_SEARCH_ENDPOINT = "https://srchamamrodeve0804.search.windows.net"
+$env:AZURE_SEARCH_ENDPOINT = "https://srchamamrodeve0805.search.windows.net"
 $env:AZURE_SEARCH_INDEX = "engineering-docs"
 
 uvicorn app.main:app --reload --port 8080
