@@ -150,7 +150,14 @@ function locationLabel(locationCode: string | null): string {
   if (!locationCode) return 'Unknown airport'
   const location = locations.value.find((item) => item.location_code === locationCode)
   if (!location) return locationCode
-  return `${location.location_code} - ${location.location_name}`
+  return [location.location_code, location.location_name, location.place]
+    .filter((value) => Boolean(value))
+    .join(' - ')
+}
+
+function originLabel(originCode: string | null): string {
+  if (!originCode) return 'SUPPLIER'
+  return locationLabel(originCode)
 }
 
 function aircraftLabel(aircraft: AircraftOption): string {
@@ -653,7 +660,7 @@ onMounted(async () => {
     <section v-if="result" class="panel result-panel">
       <h2>Decision Result</h2>
       <div class="summary-row">
-        <span>Location: <strong>{{ result.location_id }}</strong></span>
+        <span>Location: <strong>{{ locationLabel(result.location_id) }}</strong></span>
         <span>Deadline: <strong>{{ result.deadline_cycles.toFixed(2) }}</strong> cycles</span>
         <span>Urgency Score: <strong>{{ result.urgency_score.toFixed(3) }}</strong></span>
         <span :class="priorityClass(result.priority_class)">{{ result.priority_class }}</span>
@@ -667,7 +674,7 @@ onMounted(async () => {
           </header>
 
           <p class="decision-meta">
-            Origin: {{ item.selected_origin ?? 'SUPPLIER' }} |
+            Origin: {{ originLabel(item.selected_origin) }} |
             ETA: {{ item.eta_cycles.toFixed(2) }} cycles |
             Cost: {{ item.total_cost.toFixed(2) }}
           </p>
@@ -689,7 +696,7 @@ onMounted(async () => {
               <tbody>
                 <tr v-for="(opt, i) in item.top_k_options" :key="`${item.part_number}-${i}`">
                   <td>{{ opt.decision }}</td>
-                  <td>{{ opt.selected_origin ?? 'SUPPLIER' }}</td>
+                  <td>{{ originLabel(opt.selected_origin) }}</td>
                   <td>{{ opt.eta_cycles.toFixed(2) }}</td>
                   <td>{{ opt.total_cost.toFixed(2) }}</td>
                   <td>{{ opt.score.toFixed(2) }}</td>
