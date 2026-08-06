@@ -235,6 +235,16 @@ resource backendSpeechUser 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
+resource deployerSpeechUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasDeployerPrincipal) {
+  name: guid(speech.id, deployerPrincipalId, cognitiveServicesSpeechUserRoleDefinitionId)
+  scope: speech
+  properties: {
+    roleDefinitionId: cognitiveServicesSpeechUserRoleDefinitionId
+    principalId: deployerPrincipalId
+    principalType: 'User'
+  }
+}
+
 resource backendSearchServiceContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (hasBackendPrincipal) {
   name: guid(search.id, backendPrincipalId, searchServiceContributorRoleDefinitionId)
   scope: search
