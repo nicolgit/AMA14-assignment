@@ -82,9 +82,6 @@ param storageSizeGB int = 32
 @description('Initial application database to create.')
 param databaseName string = 'hangarmind'
 
-@description('Allow other Azure services to reach the server (PoC convenience). Disable and use Private Endpoint in prod.')
-param allowAzureServices bool = true
-
 // Server name: lowercase, 3-63 chars, globally unique
 var nameSeedSafe = toLower(replace(resourceNameSeed, '-', ''))
 var serverName = toLower(take('pg-${nameSeedSafe}', 63))
@@ -111,7 +108,7 @@ resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
       mode: 'Disabled' // no HA in a PoC
     }
     network: {
-      publicNetworkAccess: 'Enabled' // restrict via Private Endpoint in prod
+      publicNetworkAccess: 'Disabled'
     }
     authConfig: {
       activeDirectoryAuth: 'Enabled' // Entra ID auth for passwordless access
@@ -132,10 +129,6 @@ resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
 resource entraAdmin 'Microsoft.DBforPostgreSQL/flexibleServers/administrators@2024-08-01' = {
   parent: postgres
   name: entraAdminObjectId
-  dependsOn: [
-    allowAzure
-    allowAllIps
-  ]
   properties: {
     principalType: entraAdminPrincipalType
     principalName: entraAdminPrincipalName
@@ -168,28 +161,6 @@ resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-0
   properties: {
     charset: 'UTF8'
     collation: 'en_US.utf8'
-  }
-}
-
-// PoC firewall rule: allow access from Azure services (0.0.0.0 special range).
-// Created first so it does not run concurrently with the Entra admin operation.
-resource allowAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = if (allowAzureServices) {
-  parent: postgres
-  name: 'AllowAllAzureServicesAndResourcesWithinAzureIps'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
-  }
-}
-
-// Open firewall rule: allow all public IPv4 ranges.
-// Keep only for temporary testing and remove for production.
-resource allowAllIps 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = {
-  parent: postgres
-  name: 'AllowAllIps'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '255.255.255.255'
   }
 }
 

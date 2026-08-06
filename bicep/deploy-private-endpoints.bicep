@@ -132,7 +132,6 @@ resource dataLakeDfsDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZ
   }
 }
 
-// PostgreSQL Flexible Server (public-access mode) exposed via a private endpoint.
 resource postgresPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = if (!empty(postgresServerId)) {
   name: '${namePrefix}-${last(split(postgresServerId, '/'))}-postgres'
   location: location

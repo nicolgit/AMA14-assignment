@@ -80,14 +80,6 @@ param engineeringEmbeddingModelVersion string = '1'
 ])
 param engineeringSearchSku string = 'standard'
 
-// username esempio adminuser@pg-amamrodeve0623
-@description('PostgreSQL administrator login name (local password auth).')
-param postgresAdminLogin string = 'nicola'
-
-@description('PostgreSQL administrator password. Pass at deploy time (e.g. --parameters postgresAdminPassword=...); do not commit.')
-@secure()
-param postgresAdminPassword string = 'PassGres123!'
-
 @description('Common tags applied to all resources.')
 param tags object = {
   workload: 'hangarmind'
@@ -200,7 +192,7 @@ module engineeringAi 'deploy-ai.bicep' = if (deployEngineeringAi) {
   }
 }
 
-// 9. PostgreSQL Flexible Server (small PoC SKU, Entra + password auth)
+// 9. PostgreSQL Flexible Server (small PoC SKU, Entra-only auth)
 module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
   name: 'deploy-postgres'
   scope: rg
@@ -208,9 +200,7 @@ module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
-    authMode: 'EntraAndPassword'
-    administratorLogin: postgresAdminLogin
-    administratorLoginPassword: postgresAdminPassword
+    authMode: 'EntraOnly'
     entraAdminObjectId: backendIdentity.outputs.principalId
     entraAdminPrincipalName: backendIdentity.outputs.identityName
     additionalEntraAdminObjectId: deployerObjectId

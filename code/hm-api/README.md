@@ -34,7 +34,13 @@ cd code/hm-api
 
 # Start with hot-reload - DEVELOPMENT
 $env:CORS_ORIGINS = "http://localhost:5173"
-$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0806.postgres.database.azure.com:5432/hangarmind"
+
+#$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0806.postgres.database.azure.com:5432/hangarmind"
+$env:POSTGRES_HOST = "pg-amamrodeve0806.postgres.database.azure.com"
+$env:POSTGRES_DATABASE = "hangarmind"
+$env:POSTGRES_PORT = "5432"
+$env:POSTGRES_USER = az ad signed-in-user show --query userPrincipalName -o tsv
+
 $env:BLOB_STORAGE_URL = "https://lakeamamrodeve0805.blob.core.windows.net"
 $env:AZURE_OPENAI_ENDPOINT = "https://aiamamrodeve0806.cognitiveservices.azure.com"
 $env:AZURE_OPENAI_CHAT_DEPLOYMENT = "gpt-5-6-sol"
