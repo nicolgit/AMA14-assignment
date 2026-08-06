@@ -94,6 +94,9 @@ param azureSearchIndexName string = ''
 @description('Azure AI Speech endpoint used by the backend API.')
 param azureSpeechEndpoint string = ''
 
+@description('Resource ID of Azure AI Speech, required for Microsoft Entra token authentication.')
+param azureSpeechResourceId string = ''
+
 @description('Azure AI Speech region used by the backend API.')
 param azureSpeechRegion string = ''
 
@@ -117,8 +120,18 @@ resource dataLakeStorage 'Microsoft.Storage/storageAccounts@2024-01-01' existing
   name: dataLakeStorageAccountName
 }
 
+resource dataLakeBlobService 'Microsoft.Storage/storageAccounts/blobServices@2024-01-01' existing = if (!empty(dataLakeStorageAccountName)) {
+  parent: dataLakeStorage
+  name: 'default'
+}
+
+resource engineeringDocsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2024-01-01' existing = if (!empty(dataLakeStorageAccountName)) {
+  parent: dataLakeBlobService
+  name: 'engineering-docs'
+}
+
 var acrPullRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
-var storageBlobDataReaderRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')
+var storageBlobDataContributorRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
 
 resource containerRegistryPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(containerRegistry.id, containerRegistryPullPrincipalId, acrPullRoleDefinitionId)
@@ -130,11 +143,11 @@ resource containerRegistryPullRole 'Microsoft.Authorization/roleAssignments@2022
   }
 }
 
-resource backendStorageBlobDataReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(backendPrincipalId) && !empty(dataLakeStorageAccountName)) {
-  name: guid(dataLakeStorage.id, backendPrincipalId, storageBlobDataReaderRoleDefinitionId)
-  scope: dataLakeStorage
+resource backendStorageBlobDataContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(backendPrincipalId) && !empty(dataLakeStorageAccountName)) {
+  name: guid(engineeringDocsContainer.id, backendPrincipalId, storageBlobDataContributorRoleDefinitionId)
+  scope: engineeringDocsContainer
   properties: {
-    roleDefinitionId: storageBlobDataReaderRoleDefinitionId
+    roleDefinitionId: storageBlobDataContributorRoleDefinitionId
     principalId: backendPrincipalId
     principalType: 'ServicePrincipal'
   }
@@ -225,6 +238,10 @@ var backendEnv = concat([
   {
     name: 'AZURE_SPEECH_ENDPOINT'
     value: azureSpeechEndpoint
+  }
+  {
+    name: 'AZURE_SPEECH_RESOURCE_ID'
+    value: azureSpeechResourceId
   }
   {
     name: 'AZURE_SPEECH_REGION'

@@ -247,6 +247,7 @@ module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps && d
     azureSearchEndpoint: deployEngineeringAi ? engineeringAi.?outputs.searchEndpoint ?? '' : ''
     azureSearchIndexName: deployEngineeringAi ? engineeringAi.?outputs.searchIndexName ?? '' : ''
     azureSpeechEndpoint: deployEngineeringAi ? engineeringAi.?outputs.speechEndpoint ?? '' : ''
+    azureSpeechResourceId: deployEngineeringAi ? engineeringAi.?outputs.speechServiceId ?? '' : ''
     azureSpeechRegion: deployEngineeringAi ? engineeringAi.?outputs.speechRegion ?? '' : ''
   }
 }

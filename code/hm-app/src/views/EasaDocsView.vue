@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import MarkdownViewer from '../components/MarkdownViewer.vue'
@@ -48,6 +48,20 @@ const chatTurns = ref<ChatTurn[]>([])
 const chatLoading = ref(false)
 const chatError = ref('')
 const chatLog = ref<HTMLElement | null>(null)
+
+type VoiceState = 'idle' | 'starting' | 'recording' | 'transcribing'
+const voiceState = ref<VoiceState>('idle')
+const voiceError = ref('')
+const voiceStatus = ref('')
+
+let microphoneStream: MediaStream | null = null
+let audioContext: AudioContext | null = null
+let audioSource: MediaStreamAudioSourceNode | null = null
+let audioProcessor: ScriptProcessorNode | null = null
+let silentOutput: GainNode | null = null
+let audioChunks: Float32Array[] = []
+let recordingSampleRate = 48_000
+let recordingTimer: ReturnType<typeof setTimeout> | null = null
 
 // Index of the task-card turn currently being promoted into a document, so the
 // button can show a busy state and stay disabled during the request.
@@ -140,8 +154,147 @@ async function sendChat(text: string) {
   }
 }
 
+function encodeWav(chunks: Float32Array[], sampleRate: number): Blob {
+  const sampleCount = chunks.reduce((total, chunk) => total + chunk.length, 0)
+  const buffer = new ArrayBuffer(44 + sampleCount * 2)
+  const view = new DataView(buffer)
+
+  const writeText = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index++) {
+      view.setUint8(offset + index, value.charCodeAt(index))
+    }
+  }
+
+  writeText(0, 'RIFF')
+  view.setUint32(4, 36 + sampleCount * 2, true)
+  writeText(8, 'WAVE')
+  writeText(12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true)
+  view.setUint16(32, 2, true)
+  view.setUint16(34, 16, true)
+  writeText(36, 'data')
+  view.setUint32(40, sampleCount * 2, true)
+
+  let offset = 44
+  for (const chunk of chunks) {
+    for (const sample of chunk) {
+      const normalized = Math.max(-1, Math.min(1, sample))
+      view.setInt16(offset, normalized < 0 ? normalized * 0x8000 : normalized * 0x7fff, true)
+      offset += 2
+    }
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' })
+}
+
+function releaseMicrophone() {
+  if (recordingTimer) clearTimeout(recordingTimer)
+  recordingTimer = null
+  audioProcessor?.disconnect()
+  audioSource?.disconnect()
+  silentOutput?.disconnect()
+  microphoneStream?.getTracks().forEach((track) => track.stop())
+  if (audioContext && audioContext.state !== 'closed') void audioContext.close()
+  microphoneStream = null
+  audioContext = null
+  audioSource = null
+  audioProcessor = null
+  silentOutput = null
+}
+
+async function startRecording() {
+  voiceError.value = ''
+  voiceStatus.value = ''
+  if (!navigator.mediaDevices?.getUserMedia) {
+    voiceError.value = 'Voice input is not supported by this browser.'
+    return
+  }
+
+  voiceState.value = 'starting'
+  try {
+    microphoneStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true },
+    })
+    audioContext = new AudioContext()
+    if (audioContext.state === 'suspended') await audioContext.resume()
+    recordingSampleRate = audioContext.sampleRate
+    audioChunks = []
+    audioSource = audioContext.createMediaStreamSource(microphoneStream)
+    audioProcessor = audioContext.createScriptProcessor(4096, 1, 1)
+    silentOutput = audioContext.createGain()
+    silentOutput.gain.value = 0
+    audioProcessor.onaudioprocess = (event) => {
+      audioChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+    }
+    audioSource.connect(audioProcessor)
+    audioProcessor.connect(silentOutput)
+    silentOutput.connect(audioContext.destination)
+    voiceState.value = 'recording'
+    voiceStatus.value = 'Listening… Click the microphone to stop.'
+    recordingTimer = setTimeout(() => void stopAndTranscribe(), 30_000)
+  } catch (err) {
+    releaseMicrophone()
+    voiceState.value = 'idle'
+    voiceError.value =
+      err instanceof Error ? err.message : 'Microphone access was not granted.'
+  }
+}
+
+async function stopAndTranscribe() {
+  if (voiceState.value !== 'recording') return
+  voiceState.value = 'transcribing'
+  voiceStatus.value = 'Transcribing…'
+
+  const chunks = audioChunks
+  const sampleRate = recordingSampleRate
+  if (audioProcessor) audioProcessor.onaudioprocess = null
+  releaseMicrophone()
+
+  if (!chunks.length) {
+    voiceState.value = 'idle'
+    voiceStatus.value = ''
+    voiceError.value = 'No audio was recorded.'
+    return
+  }
+
+  try {
+    const form = new FormData()
+    form.append('audio', encodeWav(chunks, sampleRate), 'voice-input.wav')
+    const res = await fetch(`${API_BASE_URL}/v1/speech/transcribe`, {
+      method: 'POST',
+      body: form,
+    })
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`
+      try {
+        const body = await res.json()
+        if (body?.detail) detail = body.detail
+      } catch {
+        /* response had no JSON body */
+      }
+      throw new Error(detail)
+    }
+
+    const data = await res.json()
+    const transcript = String(data.text ?? '').trim()
+    if (!transcript) throw new Error('No speech could be recognized.')
+    searchQuery.value = [searchQuery.value.trim(), transcript].filter(Boolean).join(' ')
+    voiceStatus.value = `Detected language: ${data.language ?? 'unknown'}. Review the text, then press Send.`
+  } catch (err) {
+    voiceStatus.value = ''
+    voiceError.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    voiceState.value = 'idle'
+  }
+}
+
 function toggleMic() {
-  // Voice input placeholder — no behaviour yet.
+  if (voiceState.value === 'idle') void startRecording()
+  else if (voiceState.value === 'recording') void stopAndTranscribe()
 }
 
 // Promote a drafted task card into a real (draft-status) document: create the
@@ -254,6 +407,7 @@ function docIdForSource(source: string | null | undefined): string {
 }
 
 onMounted(loadDocuments)
+onBeforeUnmount(releaseMicrophone)
 </script>
 
 <template>
@@ -280,8 +434,16 @@ onMounted(loadDocuments)
           "
           @keyup.enter="onSubmit"
         />
-        <button class="mic-btn" title="Voice input (coming soon)" @click="toggleMic">
-          🎙️
+        <button
+          :class="['mic-btn', { 'mic-btn--recording': voiceState === 'recording' }]"
+          type="button"
+          :title="voiceState === 'recording' ? 'Stop recording' : 'Start voice input'"
+          :aria-label="voiceState === 'recording' ? 'Stop recording' : 'Start voice input'"
+          :aria-pressed="voiceState === 'recording'"
+          :disabled="voiceState === 'starting' || voiceState === 'transcribing'"
+          @click="toggleMic"
+        >
+          {{ voiceState === 'recording' ? '■' : voiceState === 'transcribing' ? '…' : '🎙️' }}
         </button>
         <button class="toggle-btn" type="button" @click="toggleMode">
           {{ mode === 'list' ? '💬 Chat' : '📋 Documents' }}
@@ -290,6 +452,8 @@ onMounted(loadDocuments)
           {{ mode === 'chat' ? 'Send' : 'Ask AI' }}
         </button>
       </div>
+      <p v-if="voiceStatus" class="voice-state" aria-live="polite">{{ voiceStatus }}</p>
+      <p v-if="voiceError" class="voice-state state--error" role="alert">{{ voiceError }}</p>
     </section>
 
     <section v-if="mode === 'list'" class="content">
@@ -519,6 +683,31 @@ onMounted(loadDocuments)
 .mic-btn:hover {
   border-color: var(--accent);
   filter: brightness(1.05);
+}
+
+.mic-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.mic-btn--recording {
+  color: #fff;
+  border-color: #c62f36;
+  background: #e5484d;
+  animation: recording-pulse 1.4s ease-in-out infinite;
+}
+
+.voice-state {
+  min-height: 20px;
+  margin: 8px 16px 0;
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+@keyframes recording-pulse {
+  50% {
+    box-shadow: 0 0 0 5px rgba(229, 72, 77, 0.18);
+  }
 }
 
 .search-btn {

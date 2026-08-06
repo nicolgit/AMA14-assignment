@@ -37,6 +37,15 @@ class Settings:
         )
         self.azure_search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT")
         self.azure_search_index = os.getenv("AZURE_SEARCH_INDEX", "engineering-docs")
+        self.azure_speech_endpoint = os.getenv("AZURE_SPEECH_ENDPOINT")
+        self.azure_speech_resource_id = os.getenv("AZURE_SPEECH_RESOURCE_ID")
+        self.azure_speech_languages = [
+            language.strip()
+            for language in os.getenv(
+                "AZURE_SPEECH_LANGUAGES", "it-IT,en-US,fr-FR,de-DE"
+            ).split(",")
+            if language.strip()
+        ][:4]
 
     @property
     def use_entra_auth(self) -> bool:

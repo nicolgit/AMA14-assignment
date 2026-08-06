@@ -34,12 +34,15 @@ cd code/hm-api
 
 # Start with hot-reload - DEVELOPMENT
 $env:CORS_ORIGINS = "http://localhost:5173"
-$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0805.postgres.database.azure.com:5432/hangarmind"
+$env:DATABASE_URL = "postgresql://nicola:PassGres123!@pg-amamrodeve0806.postgres.database.azure.com:5432/hangarmind"
 $env:BLOB_STORAGE_URL = "https://lakeamamrodeve0805.blob.core.windows.net"
-$env:AZURE_OPENAI_ENDPOINT = "https://aiamamrodeve0805.cognitiveservices.azure.com"
+$env:AZURE_OPENAI_ENDPOINT = "https://aiamamrodeve0806.cognitiveservices.azure.com"
 $env:AZURE_OPENAI_CHAT_DEPLOYMENT = "gpt-5-6-sol"
-$env:AZURE_SEARCH_ENDPOINT = "https://srchamamrodeve0805.search.windows.net"
+$env:AZURE_SEARCH_ENDPOINT = "https://srchamamrodeve0806.search.windows.net"
 $env:AZURE_SEARCH_INDEX = "engineering-docs"
+$env:AZURE_SPEECH_ENDPOINT = "https://spchamamrodeve0806.cognitiveservices.azure.com"
+$env:AZURE_SPEECH_RESOURCE_ID = "/subscriptions/<subscription-id>/resourceGroups/ama-mro-playground/providers/Microsoft.CognitiveServices/accounts/spchamamrodeve0806"
+$env:AZURE_SPEECH_LANGUAGES = "it-IT,en-US,fr-FR,de-DE"
 
 uvicorn app.main:app --reload --port 8080
 
@@ -93,6 +96,17 @@ The `POST /v1/engineering/chat` endpoint runs a server-side function-calling age
 | `AZURE_SEARCH_INDEX` | Index name (default `engineering-docs`) |
 
 The request body is `{ "messages": [{ "role": "user", "content": "..." }] }`; the response returns `reply`, `references` (cited sources), an optional `task_card_draft` (JSON + rendered markdown), and `tools_used`.
+
+## Voice input (Azure AI Speech)
+
+`POST /v1/speech/transcribe` accepts a WAV recording and returns its text plus the detected locale. The API acquires an Entra token with `DefaultAzureCredential`; no Speech key is used or exposed to the SPA. In Azure, the backend managed identity requires the `Cognitive Services Speech User` role and network access to the private Speech endpoint.
+
+| Variable | Purpose |
+|----------|---------|
+| `AZURE_SPEECH_ENDPOINT` | Custom Speech endpoint, e.g. `https://spchxxxx.cognitiveservices.azure.com` |
+| `AZURE_SPEECH_RESOURCE_ID` | Full Azure resource ID of the Speech account, used for Entra authentication |
+| `AZURE_SPEECH_LANGUAGES` | Optional comma-separated candidate locales; defaults to `it-IT,en-US,fr-FR,de-DE` and accepts at most four |
+
 ## CORS (frontend access)
 The SPA (`hm-app`) runs on a different origin, so cross-origin requests must be allowed. Configure the allowed origins via the `CORS_ORIGINS` environment variable (comma-separated). It defaults to the local Vite dev server.
 

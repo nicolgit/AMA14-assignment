@@ -166,9 +166,9 @@ resource speech 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   }
   properties: {
     customSubDomainName: speechServiceName
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: disablePublicNetworkAccess ? 'Disabled' : 'Enabled'
     networkAcls: {
-      defaultAction: 'Allow'
+      defaultAction: disablePublicNetworkAccess ? 'Deny' : 'Allow'
       virtualNetworkRules: []
       ipRules: []
     }
