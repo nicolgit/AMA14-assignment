@@ -12,7 +12,7 @@ Prerequisiti: az login gia' effettuato; client connesso alla VPN P2S quando Sear
 
 param(
   [string]$RG = 'ama-mro-playground',
-  [string]$DeploymentName = 'deploy'
+  [string]$DeploymentName = ''
 )
 
 $base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
@@ -51,41 +51,48 @@ function Test-EngineeringSearchOutputs {
 
 function Get-SubscriptionDeploymentOutputs {
   param(
-    [Parameter(Mandatory = $true)]
-    [string]$Name
+    [string]$Name = ''
   )
 
-  Write-Host "`nLoading deployment outputs from subscription deployment '$Name'..." -ForegroundColor Cyan
-  $outputsJson = az deployment sub show -n $Name --query properties.outputs -o json 2>$null
-  if ($LASTEXITCODE -eq 0 -and $outputsJson) {
-    $outputs = $outputsJson | ConvertFrom-Json
-    if ($outputs -and (Test-EngineeringSearchOutputs -Outputs $outputs)) {
-      return @{ Name = $Name; Outputs = $outputs }
+  if ($Name) {
+    Write-Host "`nLoading deployment outputs from subscription deployment '$Name'..." -ForegroundColor Cyan
+    $outputsJson = az deployment sub show -n $Name --query properties.outputs -o json 2>$null
+    if ($LASTEXITCODE -eq 0 -and $outputsJson) {
+      $outputs = $outputsJson | ConvertFrom-Json
+      if ($outputs -and (Test-EngineeringSearchOutputs -Outputs $outputs)) {
+        return @{ Name = $Name; Outputs = $outputs }
+      }
     }
+
+    Write-Warning "Subscription deployment '$Name' was not found or does not contain the Engineering Search outputs. Searching for the latest timestamped subscription deployment..."
+  }
+  else {
+    Write-Host "`nSearching for the latest 'deploy-yyMMdd-HHmm' subscription deployment..." -ForegroundColor Cyan
   }
 
-  Write-Warning "Subscription deployment '$Name' was not found or does not contain the Engineering Search outputs. Searching recent successful subscription deployments..."
-
-  $deploymentsJson = az deployment sub list --query "[?properties.provisioningState=='Succeeded'].{name:name,timestamp:properties.timestamp}" -o json
+  $deploymentsJson = az deployment sub list --query "[].{name:name,state:properties.provisioningState,timestamp:properties.timestamp}" -o json
   if ($LASTEXITCODE -ne 0 -or -not $deploymentsJson) {
     throw 'Could not list subscription deployments. Run az login and verify that the selected subscription is correct.'
   }
 
-  $deployments = $deploymentsJson | ConvertFrom-Json | Sort-Object timestamp -Descending
-  foreach ($deployment in $deployments) {
-    $candidateOutputsJson = az deployment sub show -n $deployment.name --query properties.outputs -o json 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $candidateOutputsJson) {
-      continue
-    }
+  $deployment = $deploymentsJson | ConvertFrom-Json |
+    Where-Object { $_.name -match '^deploy-(\d{6}|\d{8})-\d{4}$' } |
+    Sort-Object { [DateTimeOffset]$_.timestamp } -Descending |
+    Select-Object -First 1
+  if (-not $deployment) {
+    throw "No subscription deployment matching 'deploy-yyMMdd-HHmm' or 'deploy-yyyyMMdd-HHmm' was found."
+  }
 
-    $candidateOutputs = $candidateOutputsJson | ConvertFrom-Json
-    if ($candidateOutputs -and (Test-EngineeringSearchOutputs -Outputs $candidateOutputs)) {
-      Write-Host "  Using subscription deployment '$($deployment.name)'." -ForegroundColor Green
-      return @{ Name = $deployment.name; Outputs = $candidateOutputs }
+  Write-Host "  Using latest subscription deployment '$($deployment.name)' (state: $($deployment.state))." -ForegroundColor Green
+  $outputsJson = az deployment sub show -n $deployment.name --query properties.outputs -o json 2>$null
+  if ($LASTEXITCODE -eq 0 -and $outputsJson) {
+    $outputs = $outputsJson | ConvertFrom-Json
+    if ($outputs -and (Test-EngineeringSearchOutputs -Outputs $outputs)) {
+      return @{ Name = $deployment.name; Outputs = $outputs }
     }
   }
 
-  throw 'No successful subscription deployment with Engineering Search outputs was found. Pass the correct deployment name with -DeploymentName.'
+  throw "Latest subscription deployment '$($deployment.name)' (state: $($deployment.state)) does not contain the Engineering Search outputs."
 }
 
 function Approve-StoragePendingPrivateEndpointConnections {
