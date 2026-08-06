@@ -19,9 +19,8 @@ Prerequisiti: az login gia' effettuato; estensioni ml e rdbms-connect; client co
 #>
 
 param(
-  [string]$RG = 'ama-mro-playground',
-  [string]$DeploymentName = 'deploy'
-)
+  [string]$RG = 'ama-mro-playground'
+  )
 
 $base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
 
@@ -30,4 +29,4 @@ $base = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
 & "$base/populate-train-data.ps1" -RG $RG
 & "$base/populate-maintenance-data.ps1" -RG $RG
 & "$base/start-ml-pipeline.ps1" -RG $RG
-& "$base/configure-engineering-search.ps1" -RG $RG -DeploymentName $DeploymentName
+& "$base/configure-engineering-search.ps1" -RG $RG 
