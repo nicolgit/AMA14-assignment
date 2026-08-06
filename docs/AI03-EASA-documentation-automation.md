@@ -2,7 +2,7 @@
 
 Un assistente ingegneristico Gen AI recupera le procedure di manutenzione e compila le task card EASA a partire da input vocali strutturati durante le operazioni di manutenzione.
 
-La piattaforma introduce un Engineering Copilot per la documentazione EASA che combina speech-to-text, retrieval aumentato su manuali AMM/SRM/CMM/AD/SB e generazione controllata di task card. Il sistema non sostituisce l’ingegnere certificatore: precompila routine e non-routine card con riferimenti, revisioni, limiti ed effectivity gate, mentre la validazione e il CRS restano responsabilità del personale autorizzato. Le correzioni e decisioni degli ingegneri vengono tracciate e trasformate in knowledge object governati, preservando l’expertise senior e riducendo l’effort documentale.
+La piattaforma introduce un Engineering Copilot per la documentazione EASA che combina speech-to-text, retrieval aumentato su manuali AMM/SRM/CMM/AD/SB e generazione controllata di task card. Il sistema non sostituisce l’ingegnere certificatore: precompila routine e non-routine card con riferimenti, revisioni e limiti, mentre la verifica di applicabilità, la validazione e il CRS restano responsabilità del personale autorizzato. Le correzioni e decisioni degli ingegneri vengono tracciate e trasformate in knowledge object governati, preservando l’expertise senior e riducendo l’effort documentale.
 
 > Non vendere Gen AI come autore della manutenzione, ma come acceleratore regolato dell'ingegneria documentale.
 
@@ -14,7 +14,7 @@ L’assistente serve soprattutto in due casi:
 La procedura è già nota: l’AI aiuta a istanziare la card corretta per aircraft/MSN/work order, allega revisione AMM/MPD corretta, precompila campi, strumenti, safety notes, limiti e checklist.
 
 ## Task card non-routine
-È il caso più prezioso. Durante un’ispezione emerge un finding: nick, crack, corrosione, vibrazione, EGT anomaly, chip detection. Il tecnico detta un input strutturato, l’assistente recupera AMM/SRM/CMM/AD/SB applicabili, verifica effectivity e propone una bozza di Non-Routine Card con citazioni, limiti e stop condition.
+È il caso più prezioso. Durante un’ispezione emerge un finding: nick, crack, corrosione, vibrazione, EGT anomaly, chip detection. Il tecnico detta un input strutturato, l’assistente recupera AMM/SRM/CMM/AD/SB rilevanti e propone una bozza di Non-Routine Card con citazioni, limiti e stop condition. L'ingegnere verifica l'applicabilità delle fonti prima dell'uso.
 
 Esempio:
 
@@ -28,27 +28,12 @@ Assistente:
 - recupera AMM Task 72-00-00-200-001
 - vede che nick > 0.8 mm richiede percorso repair/non-routine
 - recupera Task 72-30-00-300-002
-- segnala gate: POST-MOD 7204 required
+- riporta l'applicabilità dichiarata nella fonte: POST-MOD 7204
 - genera bozza NRC
-- chiede verifica effectivity prima dell’esecuzione
+- richiede all'ingegnere di verificare l'applicabilità prima dell’esecuzione
 ```
 
-Questa decisione non deve essere interpretata creativamente dal modello. La Gen AI scrive la bozza, ma il sistema deve avere un piccolo rules/effectivity engine che impedisce di proporre procedure non applicabili.
-
-Esempio di gate deterministico:
-
-```json
-{
-	"task_id": "72-30-00-300-002",
-	"requires": {
-		"mod_status": "POST-MOD 7204"
-	},
-	"if_not_satisfied": {
-		"action": "STOP",
-		"message": "Task does not apply. Request OEM/DOA disposition."
-	}
-}
-```
+La Gen AI scrive la bozza e riporta l'applicabilità presente nelle fonti recuperate, senza assumere che la procedura sia applicabile. La decisione resta all'ingegnere, che deve verificare configurazione, revisione e mod status sui dati manutentivi approvati.
 
 # Flusso end-to-end
 
@@ -57,10 +42,9 @@ flowchart TD
 		A[Input vocale tecnico] --> B[Speech-to-text con lessico aeronautico]
 		B --> C[Parsing strutturato: aircraft, MSN, WO, ATA, finding]
 		C --> D[Retrieval RAG su AMM/SRM/CMM/AD/SB/task card storiche]
-		D --> E[Effectivity check per MSN, mod status, revisione]
-		E --> F[Bozza task card o non-routine card]
+		D --> F[Bozza task card o non-routine card con metadati delle fonti]
 		F --> G[Controlli: citazioni, limiti, warning, stop conditions]
-		G --> H[Review ingegnere]
+		G --> H[Review ingegnere e verifica applicabilità]
 		H --> I[Approvazione / correzione / rigetto]
 		I --> J[Audit log + knowledge capture]
 		J --> K[Sign-off umano / CRS dove applicabile]
@@ -74,9 +58,8 @@ flowchart TD
 | Structured extraction | Trasforma la voce in JSON operativo | LLM con schema vincolato |
 | Knowledge ingestion | Indicizza AMM, SRM, CMM, AD, SB e task card storiche | Azure AI Search hybrid/vector |
 | RAG engineering | Recupera procedure, fonti e revisioni applicabili | Azure OpenAI + Azure AI Search |
-| Effectivity engine | Verifica MSN, SB embodied, aircraft configuration e revisione | Regole deterministiche + database operativo |
 | Task card generator | Produce la bozza EASA-style | Template + LLM tool calling |
-| Human review | Permette a ingegnere/certifying staff di validare, correggere o rigettare | UI con citazioni, diff e warning |
+| Human review | Permette a ingegnere/certifying staff di verificare applicabilità, validare, correggere o rigettare | UI con citazioni, diff e warning |
 | Audit & compliance | Traccia prompt, fonti, revisioni, decisioni e approvazioni | Log immutabile + Purview/Monitor |
 
 # Input vocale strutturato
@@ -124,7 +107,7 @@ La bozza generata deve essere strutturata, verificabile e pronta per la revision
 | Finding | Descrizione, posizione, misure, evidenze |
 | Fonte | Task routine o ispezione da cui nasce il finding |
 | Riferimenti | AMM/SRM/CMM/AD/SB con revisione |
-| Effectivity gate | Applicabile, non applicabile o da verificare |
+| Applicabilità fonte | Effectivity riportata dalla fonte, da verificare durante la review |
 | Procedura proposta | Step operativi |
 | Tooling | Strumenti necessari |
 | Safety | Warning e caution obbligatori |
@@ -165,7 +148,7 @@ In ambito EASA e AI Act la distinzione di responsabilità deve essere esplicita:
 - AI può proporre;
 - AI può recuperare procedure e revisioni;
 - AI può precompilare task card;
-- AI può evidenziare incoerenze, mancanza di effectivity o stop condition;
+- AI può riportare effectivity e stop condition presenti nelle fonti;
 - AI non può approvare;
 - AI non può firmare CRS;
 - AI non può sostituire approved maintenance data.
@@ -175,10 +158,9 @@ Controlli minimi da prevedere:
 | Controllo | Motivazione |
 |---|---|
 | Citazioni obbligatorie | Ogni step deve rimandare alla fonte AMM/SRM/CMM/AD/SB e alla revisione |
-| Human-in-the-loop | La decisione finale resta a ingegnere/certifying staff autorizzato |
+| Human-in-the-loop | L'ingegnere/certifying staff autorizzato verifica anche l'applicabilità della procedura e mantiene la decisione finale |
 | Audit trail immutabile | Necessario per ispezioni, accountability e AI Act |
 | Versioning dei documenti | Evita uso di procedure superate |
-| Effectivity check | Evita procedure non applicabili a MSN/mod status |
 | Rejection workflow | L'ingegnere deve poter rigettare o correggere l'output AI |
 | Prompt/output logging | Traccia il comportamento del sistema e abilita miglioramento continuo |
 
@@ -190,13 +172,10 @@ Indicizzare AMM sample e task card sample. Input testuale strutturato. Output: b
 ## MVP 2: Voice-to-card
 Aggiungere speech-to-text e parsing JSON. Il tecnico detta il finding e il sistema propone una NRC.
 
-## MVP 3: Effectivity gate
-Aggiungere regole su MSN, SB embodied, revisioni e stop condition. Questa è la parte che rende la demo più credibile in ambito aviation.
+## MVP 3: Human review + audit
+UI per ingegnere: verifica l'applicabilità delle fonti, accetta, modifica o rigetta. Salvataggio di audit trail, fonti, revisioni e motivazione.
 
-## MVP 4: Human review + audit
-UI per ingegnere: accetta, modifica, rigetta. Salvataggio di audit trail, fonti, revisioni e motivazione.
-
-## MVP 5: Knowledge preservation
+## MVP 4: Knowledge preservation
 Le correzioni validate alimentano una knowledge base di decision rationale e casi precedenti.
 
 # Impatti sui numeri del caso studio
