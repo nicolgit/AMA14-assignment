@@ -20,29 +20,11 @@ param deployerObjectId string = '6e94d310-1194-469a-af8e-bd502dcf2782' // get fr
 @description('Microsoft Entra UPN of the deployer. Used to grant the deployer PostgreSQL Entra admin.')
 param deployerPrincipalName string = 'nicold_microsoft.com#EXT#@MngEnvMCAP361336.onmicrosoft.com' // get from `az ad signed-in-user show --query userPrincipalName -o tsv`
 
-@description('Deploy the Azure ML workspace, RUL endpoint and shared monitoring resources.')
-param deployMlPlatform bool = true
-
-@description('Deploy the PostgreSQL Flexible Server (application/metadata store).')
-param deployPostgres bool = true
-
-@description('Deploy the Container Apps environment with backend API and frontend SPA. Requires deployMlPlatform=true because it reuses Log Analytics and Application Insights from the ML module.')
-param deployContainerApps bool = true
-
-@description('Deploy the hangarmind spoke virtual network with the P2S VPN Gateway and Private DNS Resolver.')
-param deploySpokeNetwork bool = true
-
 @description('Spoke virtual network name.')
 param spokeVirtualNetworkName string = 'hangarmind-spoke-01'
 
 @description('Spoke virtual network address prefix.')
 param spokeVirtualNetworkAddressPrefix string = '10.13.0.0/16'
-
-@description('Deploy private endpoints (Data Lake storage + PostgreSQL) with static private IPs on the spoke private-endpoints subnet. Requires deploySpokeNetwork=true.')
-param deployPrivateEndpoints bool = true
-
-@description('Deploy Azure AI Foundry/OpenAI model deployments and Azure AI Search for the Engineering Copilot RAG capability.')
-param deployEngineeringAi bool = true
 
 @description('Engineering Copilot chat model deployment name.')
 param engineeringChatDeploymentName string = 'gpt-5-6-sol'
@@ -103,9 +85,7 @@ module datalake 'deploy-datalake.bicep' = {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
-    // Disable public access when private endpoints are deployed so all data-plane
-    // traffic stays within the VNet. Enable for dev/test without private networking.
-    publicNetworkAccess: deployPrivateEndpoints ? 'Disabled' : 'Enabled'
+    publicNetworkAccess: 'Disabled'
   }
 }
 
@@ -120,7 +100,7 @@ module currentUser 'current-user.bicep' = {
 }
 
 // 4. Container Registry associated with the ML workspace
-module acr 'deploy-acr.bicep' = if (deployMlPlatform) {
+module acr 'deploy-acr.bicep' = {
   name: 'deploy-acr'
   scope: rg
   params: {
@@ -131,24 +111,24 @@ module acr 'deploy-acr.bicep' = if (deployMlPlatform) {
 }
 
 // 5. ML + Monitoring platform
-module mlplatform 'deploy-ml.bicep' = if (deployMlPlatform) {
+module mlplatform 'deploy-ml.bicep' = {
   name: 'deploy-ml'
   scope: rg
   params: {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
-    containerRegistryId: acr.?outputs.containerRegistryId ?? ''
+    containerRegistryId: acr.outputs.containerRegistryId
   }
 }
 
 // 6. RBAC on current user for the AML workspace storage account
-module currentUserMlStorage 'current-user.bicep' = if (deployMlPlatform) {
+module currentUserMlStorage 'current-user.bicep' = {
   name: 'current-user-ml-storage'
   scope: rg
   params: {
     deployerObjectId: deployerObjectId
-    storageAccountName: mlplatform.?outputs.mlWorkspaceStorageAccountName ?? ''
+    storageAccountName: mlplatform.outputs.mlWorkspaceStorageAccountName
     grantFilePrivilegedContributor: true
   }
 }
@@ -165,7 +145,7 @@ module backendIdentity 'deploy-identity.bicep' = {
 }
 
 // 8. Azure AI Foundry/OpenAI + Azure AI Search for Engineering Copilot RAG
-module engineeringAi 'deploy-ai.bicep' = if (deployEngineeringAi) {
+module engineeringAi 'deploy-ai.bicep' = {
   name: 'deploy-engineering-ai'
   scope: rg
   params: {
@@ -186,14 +166,12 @@ module engineeringAi 'deploy-ai.bicep' = if (deployEngineeringAi) {
     // and a Shared Private Link is created to allow private indexing.
     dataLakeStorageAccountName: datalake.outputs.storageAccountName
     dataLakeStorageAccountId: datalake.outputs.storageAccountId
-    // Mirror the private-networking flag so AI Services and Search restrict public access
-    // when private endpoints are in use.
-    disablePublicNetworkAccess: deployPrivateEndpoints
+    disablePublicNetworkAccess: true
   }
 }
 
 // 9. PostgreSQL Flexible Server (small PoC SKU, Entra-only auth)
-module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
+module postgres 'deploy-postgres.bicep' = {
   name: 'deploy-postgres'
   scope: rg
   params: {
@@ -209,41 +187,41 @@ module postgres 'deploy-postgres.bicep' = if (deployPostgres) {
 }
 
 // 10. Container Apps environment hosting the backend API and the frontend SPA
-module containerApps 'deploy-containerapps.bicep' = if (deployContainerApps && deployMlPlatform) {
+module containerApps 'deploy-containerapps.bicep' = {
   name: 'deploy-containerapps'
   scope: rg
   params: {
     location: location
     resourceNameSeed: resourceNameSeed
     tags: tags
-    logAnalyticsWorkspaceName: mlplatform.?outputs.logAnalyticsWorkspaceName ?? ''
-    infrastructureSubnetId: deployPrivateEndpoints && deploySpokeNetwork ? spokeNetwork.?outputs.containerAppsSubnetId ?? '' : ''
-    containerRegistryName: acr.?outputs.containerRegistryName ?? ''
-    containerRegistryLoginServer: acr.?outputs.containerRegistryLoginServer ?? ''
+    logAnalyticsWorkspaceName: mlplatform.outputs.logAnalyticsWorkspaceName
+    infrastructureSubnetId: spokeNetwork.outputs.containerAppsSubnetId
+    containerRegistryName: acr.outputs.containerRegistryName
+    containerRegistryLoginServer: acr.outputs.containerRegistryLoginServer
     containerRegistryPullIdentityId: backendIdentity.outputs.containerRegistryPullIdentityResourceId
     containerRegistryPullPrincipalId: backendIdentity.outputs.containerRegistryPullIdentityPrincipalId
     backendUserAssignedIdentityId: backendIdentity.outputs.identityResourceId
     backendUserAssignedIdentityClientId: backendIdentity.outputs.clientId
     backendPrincipalId: backendIdentity.outputs.principalId
-    applicationInsightsConnectionString: mlplatform.?outputs.applicationInsightsConnectionString ?? ''
-    postgresFqdn: deployPostgres ? postgres.?outputs.postgresFqdn ?? '' : ''
-    postgresDatabaseName: deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''
+    applicationInsightsConnectionString: mlplatform.outputs.applicationInsightsConnectionString
+    postgresFqdn: postgres.outputs.postgresFqdn
+    postgresDatabaseName: postgres.outputs.postgresDatabaseName
     postgresUser: backendIdentity.outputs.identityName
     dataLakeStorageAccountName: datalake.outputs.storageAccountName
     dataLakeBlobEndpoint: datalake.outputs.primaryBlobEndpoint
-    azureOpenAiEndpoint: deployEngineeringAi ? engineeringAi.?outputs.aiServicesEndpoint ?? '' : ''
-    azureOpenAiChatDeployment: deployEngineeringAi ? engineeringAi.?outputs.chatDeploymentName ?? '' : ''
-    azureOpenAiEmbeddingDeployment: deployEngineeringAi ? engineeringAi.?outputs.embeddingDeploymentName ?? '' : ''
-    azureSearchEndpoint: deployEngineeringAi ? engineeringAi.?outputs.searchEndpoint ?? '' : ''
-    azureSearchIndexName: deployEngineeringAi ? engineeringAi.?outputs.searchIndexName ?? '' : ''
-    azureSpeechEndpoint: deployEngineeringAi ? engineeringAi.?outputs.speechEndpoint ?? '' : ''
-    azureSpeechResourceId: deployEngineeringAi ? engineeringAi.?outputs.speechServiceId ?? '' : ''
-    azureSpeechRegion: deployEngineeringAi ? engineeringAi.?outputs.speechRegion ?? '' : ''
+    azureOpenAiEndpoint: engineeringAi.outputs.aiServicesEndpoint
+    azureOpenAiChatDeployment: engineeringAi.outputs.chatDeploymentName
+    azureOpenAiEmbeddingDeployment: engineeringAi.outputs.embeddingDeploymentName
+    azureSearchEndpoint: engineeringAi.outputs.searchEndpoint
+    azureSearchIndexName: engineeringAi.outputs.searchIndexName
+    azureSpeechEndpoint: engineeringAi.outputs.speechEndpoint
+    azureSpeechResourceId: engineeringAi.outputs.speechServiceId
+    azureSpeechRegion: engineeringAi.outputs.speechRegion
   }
 }
 
 // 11. Hangarmind spoke virtual network with Private DNS Resolver and P2S VPN Gateway
-module spokeNetwork 'deploy-spoke-network.bicep' = if (deploySpokeNetwork) {
+module spokeNetwork 'deploy-spoke-network.bicep' = {
   name: 'deploy-spoke-network'
   scope: rg
   params: {
@@ -258,92 +236,92 @@ module spokeNetwork 'deploy-spoke-network.bicep' = if (deploySpokeNetwork) {
 }
 
 // 12. Private DNS zones (blob, dfs, postgres) linked to the spoke
-module privateDns 'deploy-private-dns.bicep' = if (deployPrivateEndpoints && deploySpokeNetwork) {
+module privateDns 'deploy-private-dns.bicep' = {
   name: 'deploy-private-dns'
   scope: rg
   params: {
     tags: tags
-    spokeVirtualNetworkId: spokeNetwork.?outputs.spokeVirtualNetworkId ?? ''
-    enablePostgresZone: deployPostgres
+    spokeVirtualNetworkId: spokeNetwork.outputs.spokeVirtualNetworkId
+    enablePostgresZone: true
   }
 }
 
 // 13. Private endpoints (Data Lake storage + PostgreSQL) with static private IPs on the spoke
-module privateEndpoints 'deploy-private-endpoints.bicep' = if (deployPrivateEndpoints && deploySpokeNetwork) {
+module privateEndpoints 'deploy-private-endpoints.bicep' = {
   name: 'deploy-private-endpoints'
   scope: rg
   params: {
     location: location
     tags: tags
-    privateEndpointsSubnetId: spokeNetwork.?outputs.privateEndpointsSubnetId ?? ''
+    privateEndpointsSubnetId: spokeNetwork.outputs.privateEndpointsSubnetId
     dataLakeStorageAccountId: datalake.outputs.storageAccountId
-    postgresServerId: deployPostgres ? postgres.?outputs.postgresServerId ?? '' : ''
-    blobPrivateDnsZoneId: privateDns.?outputs.blobPrivateDnsZoneId ?? ''
-    dfsPrivateDnsZoneId: privateDns.?outputs.dfsPrivateDnsZoneId ?? ''
-    postgresPrivateDnsZoneId: privateDns.?outputs.postgresPrivateDnsZoneId ?? ''
+    postgresServerId: postgres.outputs.postgresServerId
+    blobPrivateDnsZoneId: privateDns.outputs.blobPrivateDnsZoneId
+    dfsPrivateDnsZoneId: privateDns.outputs.dfsPrivateDnsZoneId
+    postgresPrivateDnsZoneId: privateDns.outputs.postgresPrivateDnsZoneId
   }
 }
 
 // 14. Private endpoints + DNS zones for the AI stack (AI Services, Speech, Search)
-module aiPrivateEndpoints 'deploy-ai-private-endpoints.bicep' = if (deployPrivateEndpoints && deploySpokeNetwork && deployEngineeringAi) {
+module aiPrivateEndpoints 'deploy-ai-private-endpoints.bicep' = {
   name: 'deploy-ai-private-endpoints'
   scope: rg
   params: {
     location: location
     tags: tags
-    privateEndpointsSubnetId: spokeNetwork.?outputs.privateEndpointsSubnetId ?? ''
-    spokeVirtualNetworkId: spokeNetwork.?outputs.spokeVirtualNetworkId ?? ''
-    aiServicesId: engineeringAi.?outputs.aiServicesId ?? ''
-    speechServiceId: engineeringAi.?outputs.speechServiceId ?? ''
-    searchServiceId: engineeringAi.?outputs.searchServiceId ?? ''
+    privateEndpointsSubnetId: spokeNetwork.outputs.privateEndpointsSubnetId
+    spokeVirtualNetworkId: spokeNetwork.outputs.spokeVirtualNetworkId
+    aiServicesId: engineeringAi.outputs.aiServicesId
+    speechServiceId: engineeringAi.outputs.speechServiceId
+    searchServiceId: engineeringAi.outputs.searchServiceId
   }
 }
 
 output resourceGroupId string = rg.id
-output spokeVirtualNetworkName string = deploySpokeNetwork ? spokeNetwork.?outputs.spokeVirtualNetworkName ?? '' : ''
-output spokeVirtualNetworkId string = deploySpokeNetwork ? spokeNetwork.?outputs.spokeVirtualNetworkId ?? '' : ''
-output vpnGatewayName string = deploySpokeNetwork ? spokeNetwork.?outputs.vpnGatewayName ?? '' : ''
-output vpnGatewayPublicIpFqdn string = deploySpokeNetwork ? spokeNetwork.?outputs.vpnGatewayPublicIpFqdn ?? '' : ''
-output vpnGatewayPublicIpAddress string = deploySpokeNetwork ? spokeNetwork.?outputs.vpnGatewayPublicIpAddress ?? '' : ''
-output dnsResolverName string = deploySpokeNetwork ? spokeNetwork.?outputs.dnsResolverName ?? '' : ''
-output dnsResolverInboundIpAddress string = deploySpokeNetwork ? spokeNetwork.?outputs.dnsResolverInboundIpAddress ?? '' : ''
-output dataLakeBlobPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork ? privateEndpoints.?outputs.dataLakeBlobPrivateIpAddress ?? '' : ''
-output dataLakeDfsPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork ? privateEndpoints.?outputs.dataLakeDfsPrivateIpAddress ?? '' : ''
-output postgresPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork ? privateEndpoints.?outputs.postgresPrivateIpAddress ?? '' : ''
-output aiServicesPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork && deployEngineeringAi ? aiPrivateEndpoints.?outputs.aiServicesPrivateIpAddress ?? '' : ''
-output speechPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork && deployEngineeringAi ? aiPrivateEndpoints.?outputs.speechPrivateIpAddress ?? '' : ''
-output searchPrivateIpAddress string = deployPrivateEndpoints && deploySpokeNetwork && deployEngineeringAi ? aiPrivateEndpoints.?outputs.searchPrivateIpAddress ?? '' : ''
+output spokeVirtualNetworkName string = spokeNetwork.outputs.spokeVirtualNetworkName
+output spokeVirtualNetworkId string = spokeNetwork.outputs.spokeVirtualNetworkId
+output vpnGatewayName string = spokeNetwork.outputs.vpnGatewayName
+output vpnGatewayPublicIpFqdn string = spokeNetwork.outputs.vpnGatewayPublicIpFqdn
+output vpnGatewayPublicIpAddress string = spokeNetwork.outputs.vpnGatewayPublicIpAddress
+output dnsResolverName string = spokeNetwork.outputs.dnsResolverName
+output dnsResolverInboundIpAddress string = spokeNetwork.outputs.dnsResolverInboundIpAddress
+output dataLakeBlobPrivateIpAddress string = privateEndpoints.outputs.dataLakeBlobPrivateIpAddress
+output dataLakeDfsPrivateIpAddress string = privateEndpoints.outputs.dataLakeDfsPrivateIpAddress
+output postgresPrivateIpAddress string = privateEndpoints.outputs.postgresPrivateIpAddress
+output aiServicesPrivateIpAddress string = aiPrivateEndpoints.outputs.aiServicesPrivateIpAddress
+output speechPrivateIpAddress string = aiPrivateEndpoints.outputs.speechPrivateIpAddress
+output searchPrivateIpAddress string = aiPrivateEndpoints.outputs.searchPrivateIpAddress
 output dataLakeAccountName string = datalake.outputs.storageAccountName
 output dataLakeAccountId string = datalake.outputs.storageAccountId
 output dataLakePrimaryDfsEndpoint string = datalake.outputs.primaryDfsEndpoint
 output dataLakeContainerNames array = datalake.outputs.containerNames
 output currentUserBlobDataContributorRoleAssignmentId string = currentUser.outputs.storageBlobDataContributorRoleAssignmentId
-output mlWorkspaceStorageBlobDataContributorRoleAssignmentId string = deployMlPlatform ? currentUserMlStorage.?outputs.storageBlobDataContributorRoleAssignmentId ?? '' : ''
-output mlWorkspaceName string = deployMlPlatform ? mlplatform.?outputs.mlWorkspaceName ?? '' : ''
-output mlOnlineEndpointName string = deployMlPlatform ? mlplatform.?outputs.mlOnlineEndpointName ?? '' : ''
-output keyVaultName string = deployMlPlatform ? mlplatform.?outputs.keyVaultName ?? '' : ''
-output applicationInsightsName string = deployMlPlatform ? mlplatform.?outputs.applicationInsightsName ?? '' : ''
-output logAnalyticsWorkspaceName string = deployMlPlatform ? mlplatform.?outputs.logAnalyticsWorkspaceName ?? '' : ''
-output mlWorkspaceStorageAccountName string = deployMlPlatform ? mlplatform.?outputs.mlWorkspaceStorageAccountName ?? '' : ''
-output containerRegistryName string = deployMlPlatform ? acr.?outputs.containerRegistryName ?? '' : ''
-output containerRegistryLoginServer string = deployMlPlatform ? acr.?outputs.containerRegistryLoginServer ?? '' : ''
-output postgresServerName string = deployPostgres ? postgres.?outputs.postgresServerName ?? '' : ''
-output postgresFqdn string = deployPostgres ? postgres.?outputs.postgresFqdn ?? '' : ''
-output postgresDatabaseName string = deployPostgres ? postgres.?outputs.postgresDatabaseName ?? '' : ''
-output engineeringAiServicesName string = deployEngineeringAi ? engineeringAi.?outputs.aiServicesName ?? '' : ''
-output engineeringAiServicesEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.aiServicesEndpoint ?? '' : ''
-output engineeringAiServicesId string = deployEngineeringAi ? engineeringAi.?outputs.aiServicesId ?? '' : ''
-output engineeringAiChatDeploymentName string = deployEngineeringAi ? engineeringAi.?outputs.chatDeploymentName ?? '' : ''
-output engineeringAiEmbeddingDeploymentName string = deployEngineeringAi ? engineeringAi.?outputs.embeddingDeploymentName ?? '' : ''
-output engineeringSpeechServiceName string = deployEngineeringAi ? engineeringAi.?outputs.speechServiceName ?? '' : ''
-output engineeringSpeechEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.speechEndpoint ?? '' : ''
-output engineeringSpeechRegion string = deployEngineeringAi ? engineeringAi.?outputs.speechRegion ?? '' : ''
-output engineeringSearchServiceName string = deployEngineeringAi ? engineeringAi.?outputs.searchServiceName ?? '' : ''
-output engineeringSearchEndpoint string = deployEngineeringAi ? engineeringAi.?outputs.searchEndpoint ?? '' : ''
-output engineeringSearchIndexName string = deployEngineeringAi ? engineeringAi.?outputs.searchIndexName ?? '' : ''
-output engineeringSearchManagedIdentityPrincipalId string = deployEngineeringAi ? engineeringAi.?outputs.searchManagedIdentityPrincipalId ?? '' : ''
-output containerAppsEnvironmentName string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.containerAppsEnvironmentName ?? '' : ''
-output backendApiAppName string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.backendAppName ?? '' : ''
-output backendApiFqdn string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.backendFqdn ?? '' : ''
-output frontendSpaAppName string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.frontendAppName ?? '' : ''
-output frontendSpaFqdn string = deployContainerApps && deployMlPlatform ? containerApps.?outputs.frontendFqdn ?? '' : ''
+output mlWorkspaceStorageBlobDataContributorRoleAssignmentId string = currentUserMlStorage.outputs.storageBlobDataContributorRoleAssignmentId
+output mlWorkspaceName string = mlplatform.outputs.mlWorkspaceName
+output mlOnlineEndpointName string = mlplatform.outputs.mlOnlineEndpointName
+output keyVaultName string = mlplatform.outputs.keyVaultName
+output applicationInsightsName string = mlplatform.outputs.applicationInsightsName
+output logAnalyticsWorkspaceName string = mlplatform.outputs.logAnalyticsWorkspaceName
+output mlWorkspaceStorageAccountName string = mlplatform.outputs.mlWorkspaceStorageAccountName
+output containerRegistryName string = acr.outputs.containerRegistryName
+output containerRegistryLoginServer string = acr.outputs.containerRegistryLoginServer
+output postgresServerName string = postgres.outputs.postgresServerName
+output postgresFqdn string = postgres.outputs.postgresFqdn
+output postgresDatabaseName string = postgres.outputs.postgresDatabaseName
+output engineeringAiServicesName string = engineeringAi.outputs.aiServicesName
+output engineeringAiServicesEndpoint string = engineeringAi.outputs.aiServicesEndpoint
+output engineeringAiServicesId string = engineeringAi.outputs.aiServicesId
+output engineeringAiChatDeploymentName string = engineeringAi.outputs.chatDeploymentName
+output engineeringAiEmbeddingDeploymentName string = engineeringAi.outputs.embeddingDeploymentName
+output engineeringSpeechServiceName string = engineeringAi.outputs.speechServiceName
+output engineeringSpeechEndpoint string = engineeringAi.outputs.speechEndpoint
+output engineeringSpeechRegion string = engineeringAi.outputs.speechRegion
+output engineeringSearchServiceName string = engineeringAi.outputs.searchServiceName
+output engineeringSearchEndpoint string = engineeringAi.outputs.searchEndpoint
+output engineeringSearchIndexName string = engineeringAi.outputs.searchIndexName
+output engineeringSearchManagedIdentityPrincipalId string = engineeringAi.outputs.searchManagedIdentityPrincipalId
+output containerAppsEnvironmentName string = containerApps.outputs.containerAppsEnvironmentName
+output backendApiAppName string = containerApps.outputs.backendAppName
+output backendApiFqdn string = containerApps.outputs.backendFqdn
+output frontendSpaAppName string = containerApps.outputs.frontendAppName
+output frontendSpaFqdn string = containerApps.outputs.frontendFqdn
